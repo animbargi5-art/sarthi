@@ -1,0 +1,12 @@
+# SĀRTHI — Isaac Sim Validation Runtime Configuration
+# Note: Physical parameters (poses, dimensions, masses, tolerances) are strictly
+# sourced from simulation.scenarios.tabletop_pick_place.TabletopPickPlaceScenario.
+# Do NOT duplicate physical constants in this file.
+
+scenario_id: "tabletop_pick_and_place_mvp"
+headless: true
+save_stage: null
+output_directory: "logs/isaac_validation"
+max_steps: 10
+enable_trace: true
+robot_asset_path: null
