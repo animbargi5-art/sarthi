@@ -9,7 +9,8 @@ Strict Architectural Boundaries:
 - Reuses canonical backend.app.decision_engine.models.WorldState.
 """
 
-from typing import Any, Dict, Optional, Union
+import math
+from typing import Any, Dict, List, Optional, Union
 from backend.app.decision_engine.models import (
     ActionType,
     CandidateAction,
@@ -24,7 +25,11 @@ from backend.app.decision_engine.models import (
     WorldObject,
     WorldState,
 )
-from simulation.adapters.isaac_sim import IsaacSimAction, is_isaac_sim_available
+from simulation.adapters.isaac_sim import (
+    IsaacSimAction,
+    IsaacSimDisturbance,
+    is_isaac_sim_available,
+)
 from simulation.core.events import (
     ActionExecutionResult,
     DisturbanceEvent,
@@ -93,11 +98,18 @@ class SarthiIsaacRuntime:
         self._last_action_outcome: LastActionOutcome = LastActionOutcome(
             status=LastActionStatus.NONE
         )
+        self._released_object_positions: Dict[str, Point3D] = {}
+        self._last_verification_failure: Optional[str] = None
 
     @property
     def is_initialized(self) -> bool:
         """True if the Isaac Sim simulation application is active."""
         return self._is_initialized
+
+    @property
+    def last_verification_failure(self) -> Optional[str]:
+        """Human-readable failure reason from the most recent action verification."""
+        return self._last_verification_failure
 
     def initialize(
         self,
@@ -124,6 +136,8 @@ class SarthiIsaacRuntime:
         """
         if not self._is_initialized or not is_isaac_sim_available():
             raise IsaacSimRuntimeError()
+
+        self._released_object_positions.clear()
 
         if scenario:
             self.scenario = scenario
@@ -152,15 +166,61 @@ class SarthiIsaacRuntime:
             self._world.step(render=render)
             self._simulation_time += 1.0 / 60.0
 
+    def _get_object_position(self, object_id: str) -> Point3D:
+        """
+        Returns current Cartesian coordinates of the specified object.
+        Queries live USD prim if available, otherwise falls back to last physically
+        released coordinates, or scenario initial pose.
+        """
+        if self._world is not None and is_isaac_sim_available():
+            try:
+                from omni.isaac.core.prims import XFormPrim
+                prim_path = f"/World/Objects/{object_id}"
+                prim = XFormPrim(prim_path=prim_path)
+                if prim.is_valid():
+                    pos, _ = prim.get_world_pose()
+                    return Point3D(x=float(pos[0]), y=float(pos[1]), z=float(pos[2]))
+            except Exception:
+                pass
+
+        if object_id in self._released_object_positions:
+            return self._released_object_positions[object_id]
+
+        if object_id == self.scenario.red_object.object_id:
+            return self.scenario.red_object.initial_pose
+
+        return Point3D(x=0.0, y=0.0, z=0.0)
+
     def inject_disturbance(
         self,
-        disturbance: Optional[DisturbanceEvent] = None,
+        disturbance: Optional[Union[DisturbanceEvent, IsaacSimDisturbance, Dict[str, Any]]] = None,
     ) -> bool:
         """
         Spawns the dynamic PATH_BLOCKED obstacle inside the USD stage.
+        Accepts both DisturbanceEvent and IsaacSimDisturbance, normalizing internally.
         """
         if not self._is_initialized or not is_isaac_sim_available():
             raise IsaacSimRuntimeError()
+
+        if disturbance is not None:
+            if isinstance(disturbance, DisturbanceEvent):
+                from simulation.adapters.isaac_sim import IsaacSimAdapter
+                norm_dist = IsaacSimAdapter.translate_disturbance(disturbance)
+            elif isinstance(disturbance, IsaacSimDisturbance):
+                norm_dist = disturbance
+            elif isinstance(disturbance, dict):
+                if "usd_prim_path" in disturbance:
+                    norm_dist = IsaacSimDisturbance.model_validate(disturbance)
+                else:
+                    dist_ev = DisturbanceEvent.model_validate(disturbance)
+                    from simulation.adapters.isaac_sim import IsaacSimAdapter
+                    norm_dist = IsaacSimAdapter.translate_disturbance(dist_ev)
+            else:
+                raise TypeError(f"Unsupported disturbance type: {type(disturbance).__name__}")
+
+            if hasattr(norm_dist, "position"):
+                pos = norm_dist.position
+                self.disturbance.position = Point3D(x=pos["x"], y=pos["y"], z=pos["z"])
 
         self.disturbance.spawn(self._world)
         self._world_state_version += 1
@@ -174,7 +234,7 @@ class SarthiIsaacRuntime:
         - robot joint positions and velocities
         - end-effector pose
         - gripper state (open/closed/holding)
-        - movable object pose
+        - movable object pose (follows end-effector when held; persists after release)
         - target pose
         - dynamic obstacle state
         """
@@ -191,12 +251,21 @@ class SarthiIsaacRuntime:
             holding_id = ctrl.holding_object_id
 
             # Determine object position (linked to end-effector if held)
-            obj_pos = ee_pos if is_holding else self.scenario.red_object.initial_pose
-            obj_state = (
-                ObjectState.GRASPED
-                if is_holding
-                else ObjectState.FREE
-            )
+            if is_holding:
+                obj_pos = ee_pos
+                obj_state = ObjectState.GRASPED
+            else:
+                obj_pos = self._get_object_position(self.scenario.red_object.object_id)
+                target_pos = self.scenario.blue_target.target_pose
+                dist_to_target = math.sqrt(
+                    (obj_pos.x - target_pos.x) ** 2
+                    + (obj_pos.y - target_pos.y) ** 2
+                    + (obj_pos.z - target_pos.z) ** 2
+                )
+                if dist_to_target <= self.scenario.blue_target.tolerance_radius_m:
+                    obj_state = ObjectState.PLACED
+                else:
+                    obj_state = ObjectState.FREE
 
             robot_state = RobotState(
                 position=ee_pos,
@@ -266,11 +335,25 @@ class SarthiIsaacRuntime:
             )
 
         # Fallback to scenario world state if articulation is not yet bound
-        return self.scenario.to_world_state(
+        ws = self.scenario.to_world_state(
             with_disturbance=self.disturbance.is_active,
             version=self._world_state_version,
             timestamp_ns=int(self._simulation_time * 1e9),
         )
+        if self.scenario.red_object.object_id in self._released_object_positions:
+            rel_pos = self._released_object_positions[self.scenario.red_object.object_id]
+            for obj in ws.objects:
+                if obj.id == self.scenario.red_object.object_id:
+                    obj.position = rel_pos
+                    target_pos = self.scenario.blue_target.target_pose
+                    dist_to_target = math.sqrt(
+                        (rel_pos.x - target_pos.x) ** 2
+                        + (rel_pos.y - target_pos.y) ** 2
+                        + (rel_pos.z - target_pos.z) ** 2
+                    )
+                    if dist_to_target <= self.scenario.blue_target.tolerance_radius_m:
+                        obj.state = ObjectState.PLACED
+        return ws
 
     def get_world_state(self) -> WorldState:
         """
@@ -297,7 +380,7 @@ class SarthiIsaacRuntime:
             "movable_object_pose": (
                 art_state["end_effector_position"]
                 if art_state["is_holding_object"]
-                else self.scenario.red_object.initial_pose
+                else self._get_object_position(self.scenario.red_object.object_id)
             ),
             "target_pose": self.scenario.blue_target.target_pose,
             "dynamic_obstacles_detected": self.disturbance.is_active,
@@ -318,6 +401,7 @@ class SarthiIsaacRuntime:
             raise IsaacSimRuntimeError()
 
         prev_version = self._world_state_version
+        previously_held_id = self.articulation_controller.holding_object_id
 
         # Dispatch action through articulation controller
         result = self.articulation_controller.dispatch_action(
@@ -325,10 +409,7 @@ class SarthiIsaacRuntime:
             sim_time=self._simulation_time,
             world_version=prev_version,
         )
-        self._world_state_version += 1
-        result.new_world_state_version = self._world_state_version
 
-        status_enum = LastActionStatus.SUCCESS if result.success else LastActionStatus.FAILURE
         act_type_enum = None
         if hasattr(action, "action_type"):
             act_type_enum = (
@@ -339,6 +420,27 @@ class SarthiIsaacRuntime:
         elif isinstance(action, dict) and "action_type" in action:
             act_type_enum = ActionType(str(action["action_type"]))
 
+        if result.success:
+            self._world_state_version += 1
+            result.new_world_state_version = self._world_state_version
+
+            # When releasing, persist the released payload coordinates
+            if act_type_enum == ActionType.RELEASE:
+                ee_pos = self.articulation_controller.get_end_effector_position()
+                released_id = previously_held_id
+                if not released_id:
+                    if hasattr(action, "target_object_id") and action.target_object_id:
+                        released_id = str(action.target_object_id)
+                    elif isinstance(action, dict) and action.get("target_object_id"):
+                        released_id = str(action["target_object_id"])
+                    else:
+                        released_id = self.scenario.red_object.object_id
+                self._released_object_positions[released_id] = ee_pos
+        else:
+            # Preserve world state version intact on failure
+            result.new_world_state_version = self._world_state_version
+
+        status_enum = LastActionStatus.SUCCESS if result.success else LastActionStatus.FAILURE
         self._last_action_outcome = LastActionOutcome(
             action_type=act_type_enum,
             status=status_enum,
@@ -352,10 +454,191 @@ class SarthiIsaacRuntime:
         action: Any,
         expected_outcome: Optional[Dict[str, Any]] = None,
     ) -> bool:
-        """Verifies state in Isaac Sim matches physical expectation."""
+        """
+        Verifies state in Isaac Sim matches physical expectation.
+        Performs explicit validation for:
+        - APPROACH: end-effector reached target within tolerance
+        - REPOSITION: end-effector reached safe waypoint within tolerance
+        - MOVE: end-effector/payload reached destination; blocked motion rejected
+        - GRASP: gripper closed, object within grasp radius, payload attached
+        - RELEASE: gripper open, payload detached, object at expected released location
+        - STOP: robot stopped safely
+        """
         if not self._is_initialized or not is_isaac_sim_available():
             raise IsaacSimRuntimeError()
-        return True
+
+        outcome = expected_outcome or {}
+        ctrl = self.articulation_controller
+
+        # If last action execution failed, verification fails
+        if self._last_action_outcome.status == LastActionStatus.FAILURE:
+            self._last_verification_failure = (
+                f"Action execution failed: {self._last_action_outcome.error_message}"
+            )
+            return False
+
+        # Extract ActionType
+        act_type: Optional[ActionType] = None
+        if hasattr(action, "action_type"):
+            raw = action.action_type
+            act_type = raw if isinstance(raw, ActionType) else ActionType(str(raw))
+        elif isinstance(action, dict) and "action_type" in action:
+            act_type = ActionType(str(action["action_type"]))
+
+        if act_type is None:
+            self._last_verification_failure = "Unable to determine action_type for verification."
+            return False
+
+        tolerance = float(outcome.get("tolerance", 0.05))
+
+        # Helper to extract target position
+        target_pos = outcome.get("target_position")
+        if target_pos is None:
+            if hasattr(action, "target_position") and action.target_position:
+                target_pos = action.target_position
+            elif isinstance(action, dict) and "target_position" in action:
+                target_pos = action.get("target_position")
+
+        if act_type == ActionType.APPROACH:
+            if target_pos is not None:
+                if not ctrl.is_at_target(target_pos, tolerance_m=tolerance):
+                    current_ee = ctrl.get_end_effector_position()
+                    self._last_verification_failure = (
+                        f"APPROACH verification failed: End-effector at ({current_ee.x:.3f}, {current_ee.y:.3f}, {current_ee.z:.3f}) "
+                        f"not within {tolerance:.3f}m of target."
+                    )
+                    return False
+            self._last_verification_failure = None
+            return True
+
+        elif act_type == ActionType.REPOSITION:
+            if target_pos is not None:
+                if not ctrl.is_at_target(target_pos, tolerance_m=tolerance):
+                    current_ee = ctrl.get_end_effector_position()
+                    self._last_verification_failure = (
+                        f"REPOSITION verification failed: End-effector at ({current_ee.x:.3f}, {current_ee.y:.3f}, {current_ee.z:.3f}) "
+                        f"did not reach waypoint within {tolerance:.3f}m."
+                    )
+                    return False
+            self._last_verification_failure = None
+            return True
+
+        elif act_type == ActionType.MOVE:
+            # 1. Blocked/invalid movement check: dynamic obstacle in collision path
+            if self.disturbance.is_active:
+                ee_pos = ctrl.get_end_effector_position()
+                obs_pos = self.disturbance.position
+                dist_to_obs = math.sqrt(
+                    (ee_pos.x - obs_pos.x) ** 2
+                    + (ee_pos.y - obs_pos.y) ** 2
+                    + (ee_pos.z - obs_pos.z) ** 2
+                )
+                safe_margin = 0.10
+                if dist_to_obs < safe_margin:
+                    self._last_verification_failure = (
+                        f"MOVE verification failed: Path blocked by obstacle at ({obs_pos.x:.2f}, {obs_pos.y:.2f}, {obs_pos.z:.2f}) "
+                        f"(distance {dist_to_obs:.3f}m < safe margin {safe_margin:.3f}m)."
+                    )
+                    return False
+
+            # 2. Check destination reach
+            if target_pos is not None:
+                if not ctrl.is_at_target(target_pos, tolerance_m=tolerance):
+                    current_ee = ctrl.get_end_effector_position()
+                    self._last_verification_failure = (
+                        f"MOVE verification failed: End-effector at ({current_ee.x:.3f}, {current_ee.y:.3f}, {current_ee.z:.3f}) "
+                        f"not within {tolerance:.3f}m of target destination."
+                    )
+                    return False
+            self._last_verification_failure = None
+            return True
+
+        elif act_type == ActionType.GRASP:
+            # Gripper must be closed
+            if not ctrl.is_gripper_closed:
+                self._last_verification_failure = "GRASP verification failed: Gripper is not closed."
+                return False
+
+            # Payload must be attached
+            if not ctrl.is_holding_object:
+                self._last_verification_failure = "GRASP verification failed: No object is attached."
+                return False
+
+            # If expected carrying object is specified, verify match
+            expected_payload = outcome.get("carrying_object_id")
+            if expected_payload and ctrl.holding_object_id != str(expected_payload):
+                self._last_verification_failure = (
+                    f"GRASP verification failed: Attached object '{ctrl.holding_object_id}' != expected '{expected_payload}'."
+                )
+                return False
+
+            # Object must be within configured grasp radius
+            grasp_radius = float(outcome.get("grasp_radius", 0.12))
+            if target_pos is not None:
+                if not ctrl.is_at_target(target_pos, tolerance_m=grasp_radius):
+                    self._last_verification_failure = (
+                        f"GRASP verification failed: Target position is outside grasp radius {grasp_radius:.3f}m."
+                    )
+                    return False
+
+            self._last_verification_failure = None
+            return True
+
+        elif act_type == ActionType.RELEASE:
+            # Gripper must be open
+            if ctrl.is_gripper_closed:
+                self._last_verification_failure = "RELEASE verification failed: Gripper is still closed."
+                return False
+
+            # Payload must no longer be attached
+            if ctrl.is_holding_object or ctrl.holding_object_id is not None:
+                self._last_verification_failure = "RELEASE verification failed: Payload is still attached."
+                return False
+
+            # Object remains at expected released location
+            expected_rel_pos = outcome.get("target_position") or target_pos
+            if expected_rel_pos is not None:
+                target_obj_id = outcome.get("target_object_id")
+                if not target_obj_id:
+                    if hasattr(action, "target_object_id") and action.target_object_id:
+                        target_obj_id = action.target_object_id
+                    elif isinstance(action, dict) and "target_object_id" in action:
+                        target_obj_id = action.get("target_object_id")
+                    else:
+                        target_obj_id = self.scenario.red_object.object_id
+
+                obj_actual_pos = self._get_object_position(str(target_obj_id))
+                if isinstance(expected_rel_pos, dict):
+                    rx = float(expected_rel_pos.get("x", 0.0))
+                    ry = float(expected_rel_pos.get("y", 0.0))
+                    rz = float(expected_rel_pos.get("z", 0.0))
+                else:
+                    rx, ry, rz = expected_rel_pos.x, expected_rel_pos.y, expected_rel_pos.z
+
+                dist_rel = math.sqrt(
+                    (obj_actual_pos.x - rx) ** 2
+                    + (obj_actual_pos.y - ry) ** 2
+                    + (obj_actual_pos.z - rz) ** 2
+                )
+                if dist_rel > tolerance:
+                    self._last_verification_failure = (
+                        f"RELEASE verification failed: Object at ({obj_actual_pos.x:.3f}, {obj_actual_pos.y:.3f}, {obj_actual_pos.z:.3f}) "
+                        f"is {dist_rel:.3f}m from expected release position ({rx:.3f}, {ry:.3f}, {rz:.3f}) > {tolerance:.3f}m."
+                    )
+                    return False
+
+            self._last_verification_failure = None
+            return True
+
+        elif act_type == ActionType.STOP:
+            if not ctrl.is_stopped:
+                self._last_verification_failure = "STOP verification failed: Robot is not in stopped state."
+                return False
+            self._last_verification_failure = None
+            return True
+
+        self._last_verification_failure = f"Unknown action type: {act_type}"
+        return False
 
     def shutdown(self) -> None:
         """Terminates simulation application cleanly."""

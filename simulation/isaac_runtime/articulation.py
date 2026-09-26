@@ -17,6 +17,7 @@ Strict Architectural Guarantees:
 - Raises IsaacSimRuntimeError if executed when Isaac Sim is not available.
 """
 
+import math
 from typing import Any, Dict, List, Optional, Tuple, Union
 from backend.app.decision_engine.models import (
     ActionType,
@@ -353,6 +354,32 @@ class SarthiArticulationController:
         if hasattr(self._robot, "set_joint_positions"):
             self._robot.set_joint_positions(self._joint_positions)
 
+    def is_at_target(
+        self,
+        target_pos: Union[Point3D, Dict[str, float]],
+        tolerance_m: float = 0.05,
+    ) -> bool:
+        """
+        Checks whether measured end-effector position is within Cartesian tolerance of target.
+        Does not claim a target has been reached merely because a command was issued.
+        """
+        if isinstance(target_pos, dict):
+            tx = float(target_pos.get("x", 0.0))
+            ty = float(target_pos.get("y", 0.0))
+            tz = float(target_pos.get("z", 0.0))
+        elif hasattr(target_pos, "x"):
+            tx, ty, tz = target_pos.x, target_pos.y, target_pos.z
+        else:
+            return False
+
+        current = self.get_end_effector_position()
+        dist = math.sqrt(
+            (current.x - tx) ** 2 +
+            (current.y - ty) ** 2 +
+            (current.z - tz) ** 2
+        )
+        return dist <= tolerance_m
+
     # -----------------------------------------------------------------------
     # Safety Hold & STOP
     # -----------------------------------------------------------------------
@@ -480,10 +507,66 @@ class SarthiArticulationController:
             )
 
         if action_type == ActionType.GRASP:
+            # 1. State check: cannot grasp if stopped
+            if self._is_stopped:
+                return ActionExecutionResult(
+                    success=False,
+                    action_type=ActionType.GRASP.value,
+                    action_id=action_id,
+                    simulation_time=sim_time,
+                    previous_world_state_version=world_version,
+                    new_world_state_version=world_version,
+                    failure_reason="Cannot execute GRASP: articulation is in safety STOP state.",
+                    details={"error_code": "ROBOT_STOPPED"},
+                )
+
+            # 2. Missing target payload check
+            if not target_obj or not str(target_obj).strip():
+                return ActionExecutionResult(
+                    success=False,
+                    action_type=ActionType.GRASP.value,
+                    action_id=action_id,
+                    simulation_time=sim_time,
+                    previous_world_state_version=world_version,
+                    new_world_state_version=world_version,
+                    failure_reason="Cannot execute GRASP: missing target_object_id.",
+                    details={"error_code": "MISSING_PAYLOAD"},
+                )
+
+            # 3. Object proximity / grasp radius validation
+            grasp_pos = target_pos
+            if grasp_pos:
+                grasp_threshold_m = 0.12
+                if hasattr(action, "parameters") and isinstance(action.parameters, dict):
+                    grasp_threshold_m = float(action.parameters.get("grasp_threshold_m", 0.12))
+                elif isinstance(action, dict) and "parameters" in action and isinstance(action["parameters"], dict):
+                    grasp_threshold_m = float(action["parameters"].get("grasp_threshold_m", 0.12))
+
+                if not self.is_at_target(grasp_pos, tolerance_m=grasp_threshold_m):
+                    current_ee = self.get_end_effector_position()
+                    if isinstance(grasp_pos, dict):
+                        gx, gy, gz = float(grasp_pos.get("x", 0.0)), float(grasp_pos.get("y", 0.0)), float(grasp_pos.get("z", 0.0))
+                    else:
+                        gx, gy, gz = grasp_pos.x, grasp_pos.y, grasp_pos.z
+                    dist = math.sqrt((current_ee.x - gx) ** 2 + (current_ee.y - gy) ** 2 + (current_ee.z - gz) ** 2)
+                    return ActionExecutionResult(
+                        success=False,
+                        action_type=ActionType.GRASP.value,
+                        action_id=action_id,
+                        simulation_time=sim_time,
+                        previous_world_state_version=world_version,
+                        new_world_state_version=world_version,
+                        failure_reason=(
+                            f"Cannot execute GRASP: Object '{target_obj}' is outside grasp radius "
+                            f"(distance {dist:.3f}m > threshold {grasp_threshold_m:.3f}m)."
+                        ),
+                        details={"error_code": "OBJECT_OUT_OF_REACH", "distance_m": dist},
+                    )
+
+            # 4. Actuate gripper
             self.close_gripper()
-            if target_obj:
-                self._is_holding_object = True
-                self._holding_object_id = target_obj
+            self._is_holding_object = True
+            self._holding_object_id = str(target_obj)
             return ActionExecutionResult(
                 success=True,
                 action_type=ActionType.GRASP.value,
@@ -492,7 +575,7 @@ class SarthiArticulationController:
                 previous_world_state_version=world_version,
                 new_world_state_version=world_version + 1,
                 failure_reason=None,
-                details={"target_object_id": target_obj, "force_n": force},
+                details={"target_object_id": str(target_obj), "force_n": force},
             )
 
         if action_type == ActionType.MOVE:

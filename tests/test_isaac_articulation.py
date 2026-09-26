@@ -17,9 +17,16 @@ from unittest.mock import MagicMock, patch
 from backend.app.decision_engine.models import (
     ActionType,
     CandidateAction,
+    ObjectState,
     Point3D,
     WorldState,
 )
+from simulation.adapters.isaac_sim import (
+    IsaacSimAction,
+    IsaacSimAdapter,
+    IsaacSimDisturbance,
+)
+from simulation.core.events import DisturbanceEvent
 from simulation.isaac_runtime.articulation import SarthiArticulationController
 from simulation.isaac_runtime.robot_scene import RobotSceneConfig, SarthiRobotPrim
 from simulation.isaac_runtime.runtime import IsaacSimRuntimeError, SarthiIsaacRuntime
@@ -354,3 +361,346 @@ class TestIsaacArticulation(unittest.TestCase):
                 hasattr(controller, m),
                 f"SarthiArticulationController should not implement decision method '{m}'",
             )
+
+    # 13. Object pose persists after release
+    def test_13_object_pose_persists_after_release(self):
+        """Verify object pose follows payload while held and remains at released coordinates after RELEASE."""
+        runtime = SarthiIsaacRuntime(scenario=self.scenario)
+        mock_robot = MagicMock()
+        mock_robot.get_joint_positions.return_value = [0.0] * 7
+        mock_robot.get_joint_velocities.return_value = [0.0] * 7
+        mock_ee = MagicMock()
+        initial_ee = ([0.25, 0.15, 0.20], [1.0, 0.0, 0.0, 0.0])
+        mock_ee.get_world_pose.return_value = initial_ee
+        mock_robot.end_effector = mock_ee
+
+        runtime.articulation_controller.bind_robot(mock_robot)
+
+        with patch("simulation.isaac_runtime.runtime.is_isaac_sim_available", return_value=True):
+            runtime._is_initialized = True
+
+            # 1. Execute GRASP at initial object coordinates
+            act_grasp = CandidateAction(
+                action_type=ActionType.GRASP,
+                action_id="act_grasp_1",
+                target_object_id=self.scenario.red_object.object_id,
+                target_position=Point3D(x=0.25, y=0.15, z=0.20),
+            )
+            res_grasp = runtime.execute_action(act_grasp)
+            self.assertTrue(res_grasp.success)
+
+            # Object follows end-effector while held
+            ws_grasp = runtime.read_live_world_state()
+            self.assertEqual(ws_grasp.objects[0].position, Point3D(x=0.25, y=0.15, z=0.20))
+            self.assertEqual(ws_grasp.objects[0].state, ObjectState.GRASPED)
+
+            # 2. Move to blue target destination
+            target_pos = self.scenario.blue_target.target_pose
+            mock_ee.get_world_pose.return_value = ([target_pos.x, target_pos.y, target_pos.z], [1.0, 0.0, 0.0, 0.0])
+            act_move = CandidateAction(
+                action_type=ActionType.MOVE,
+                action_id="act_move_1",
+                target_position=target_pos,
+            )
+            res_move = runtime.execute_action(act_move)
+            self.assertTrue(res_move.success)
+
+            ws_move = runtime.read_live_world_state()
+            self.assertEqual(ws_move.objects[0].position, target_pos)
+
+            # 3. Execute RELEASE at destination
+            act_release = CandidateAction(
+                action_type=ActionType.RELEASE,
+                action_id="act_rel_1",
+                target_object_id=self.scenario.red_object.object_id,
+            )
+            res_rel = runtime.execute_action(act_release)
+            self.assertTrue(res_rel.success)
+
+            # 4. Robot moves away to a home waypoint
+            mock_ee.get_world_pose.return_value = ([0.0, 0.0, 0.30], [1.0, 0.0, 0.0, 0.0])
+            act_reposition = CandidateAction(
+                action_type=ActionType.REPOSITION,
+                action_id="act_repo_1",
+                target_position=Point3D(x=0.0, y=0.0, z=0.30),
+            )
+            runtime.execute_action(act_reposition)
+
+            # 5. Subsequent WorldState must contain released destination, NOT initial pose
+            ws_subsequent = runtime.read_live_world_state()
+            self.assertEqual(ws_subsequent.objects[0].position, target_pos)
+            self.assertEqual(ws_subsequent.objects[0].state, ObjectState.PLACED)
+            self.assertNotEqual(ws_subsequent.objects[0].position, self.scenario.red_object.initial_pose)
+
+    # 14. Action verification: APPROACH success and failure
+    def test_14_runtime_action_verification_approach_success_and_failure(self):
+        """Verify explicit position tolerance verification for APPROACH."""
+        runtime = SarthiIsaacRuntime(scenario=self.scenario)
+        mock_robot = MagicMock()
+        mock_robot.get_joint_positions.return_value = [0.0] * 7
+        mock_robot.get_joint_velocities.return_value = [0.0] * 7
+        mock_ee = MagicMock()
+        mock_ee.get_world_pose.return_value = ([0.25, 0.15, 0.20], [1.0, 0.0, 0.0, 0.0])
+        mock_robot.end_effector = mock_ee
+
+        runtime.articulation_controller.bind_robot(mock_robot)
+
+        with patch("simulation.isaac_runtime.runtime.is_isaac_sim_available", return_value=True):
+            runtime._is_initialized = True
+
+            # Matching target -> success
+            act_success = CandidateAction(
+                action_type=ActionType.APPROACH,
+                action_id="act_app_ok",
+                target_position=Point3D(x=0.25, y=0.15, z=0.20),
+            )
+            runtime.execute_action(act_success)
+            self.assertTrue(runtime.verify_action_result(act_success))
+            self.assertIsNone(runtime.last_verification_failure)
+
+            # Far target outside tolerance -> failure with useful diagnostic reason
+            act_fail = CandidateAction(
+                action_type=ActionType.APPROACH,
+                action_id="act_app_fail",
+                target_position=Point3D(x=0.60, y=0.60, z=0.50),
+            )
+            self.assertFalse(runtime.verify_action_result(act_fail))
+            self.assertIsNotNone(runtime.last_verification_failure)
+            self.assertIn("APPROACH verification failed", runtime.last_verification_failure)
+
+    # 15. Action verification: GRASP success and failure
+    def test_15_runtime_action_verification_grasp_success_and_failure(self):
+        """Verify explicit physical verification for GRASP (gripper closed, attached payload, radius)."""
+        runtime = SarthiIsaacRuntime(scenario=self.scenario)
+        mock_robot = MagicMock()
+        mock_robot.get_joint_positions.return_value = [0.0] * 7
+        mock_robot.get_joint_velocities.return_value = [0.0] * 7
+        mock_ee = MagicMock()
+        mock_ee.get_world_pose.return_value = ([0.25, 0.15, 0.20], [1.0, 0.0, 0.0, 0.0])
+        mock_robot.end_effector = mock_ee
+
+        runtime.articulation_controller.bind_robot(mock_robot)
+
+        with patch("simulation.isaac_runtime.runtime.is_isaac_sim_available", return_value=True):
+            runtime._is_initialized = True
+
+            act = CandidateAction(
+                action_type=ActionType.GRASP,
+                action_id="act_g_1",
+                target_object_id=self.scenario.red_object.object_id,
+                target_position=Point3D(x=0.25, y=0.15, z=0.20),
+            )
+            runtime.execute_action(act)
+            self.assertTrue(runtime.verify_action_result(act))
+
+            # Failure condition 1: Gripper is unexpectedly open
+            runtime.articulation_controller.open_gripper()
+            self.assertFalse(runtime.verify_action_result(act))
+            self.assertIn("Gripper is not closed", runtime.last_verification_failure)
+
+            # Failure condition 2: Wrong payload ID expected
+            runtime.articulation_controller.close_gripper()
+            runtime.articulation_controller._is_holding_object = True
+            runtime.articulation_controller._holding_object_id = "wrong_payload"
+            self.assertFalse(runtime.verify_action_result(act, {"carrying_object_id": self.scenario.red_object.object_id}))
+            self.assertIn("Attached object 'wrong_payload' != expected", runtime.last_verification_failure)
+
+    # 16. Action verification: RELEASE success
+    def test_16_runtime_action_verification_release_success(self):
+        """Verify explicit physical verification for RELEASE."""
+        runtime = SarthiIsaacRuntime(scenario=self.scenario)
+        mock_robot = MagicMock()
+        mock_robot.get_joint_positions.return_value = [0.0] * 7
+        mock_robot.get_joint_velocities.return_value = [0.0] * 7
+        mock_ee = MagicMock()
+        target_pos = self.scenario.blue_target.target_pose
+        mock_ee.get_world_pose.return_value = ([target_pos.x, target_pos.y, target_pos.z], [1.0, 0.0, 0.0, 0.0])
+        mock_robot.end_effector = mock_ee
+
+        runtime.articulation_controller.bind_robot(mock_robot)
+
+        with patch("simulation.isaac_runtime.runtime.is_isaac_sim_available", return_value=True):
+            runtime._is_initialized = True
+
+            # First hold object
+            act_grasp = CandidateAction(
+                action_type=ActionType.GRASP,
+                action_id="act_g",
+                target_object_id=self.scenario.red_object.object_id,
+                target_position=target_pos,
+            )
+            runtime.execute_action(act_grasp)
+
+            # Execute RELEASE
+            act_rel = CandidateAction(
+                action_type=ActionType.RELEASE,
+                action_id="act_rel",
+                target_object_id=self.scenario.red_object.object_id,
+                target_position=target_pos,
+            )
+            res = runtime.execute_action(act_rel)
+            self.assertTrue(res.success)
+            self.assertTrue(runtime.verify_action_result(act_rel))
+
+            # Failure condition: gripper still closed
+            runtime.articulation_controller._gripper_state = "CLOSED"
+            self.assertFalse(runtime.verify_action_result(act_rel))
+            self.assertIn("Gripper is still closed", runtime.last_verification_failure)
+
+    # 17. Structured grasp failure
+    def test_17_grasp_failure_returns_structured_error(self):
+        """Verify grasp failures return explicit ActionExecutionResult(success=False) without state corruption."""
+        controller = SarthiArticulationController()
+        mock_robot = MagicMock()
+        mock_robot.get_joint_positions.return_value = [0.0] * 7
+        mock_robot.get_joint_velocities.return_value = [0.0] * 7
+        mock_ee = MagicMock()
+        mock_ee.get_world_pose.return_value = ([0.0, 0.0, 0.20], [1.0, 0.0, 0.0, 0.0])
+        mock_robot.end_effector = mock_ee
+        controller.bind_robot(mock_robot)
+
+        # 1. Robot stopped failure
+        controller.stop()
+        act_stopped = CandidateAction(
+            action_type=ActionType.GRASP,
+            action_id="act_fail_stop",
+            target_object_id="red_box",
+        )
+        res_stopped = controller.dispatch_action(act_stopped, sim_time=1.0, world_version=5)
+        self.assertFalse(res_stopped.success)
+        self.assertEqual(res_stopped.new_world_state_version, 5)
+        self.assertIn("safety STOP", res_stopped.failure_reason)
+
+        # 2. Missing payload failure
+        controller.resume()
+        act_missing = CandidateAction(
+            action_type=ActionType.GRASP,
+            action_id="act_fail_missing",
+            target_object_id="",
+        )
+        res_missing = controller.dispatch_action(act_missing, sim_time=2.0, world_version=5)
+        self.assertFalse(res_missing.success)
+        self.assertIn("missing target_object_id", res_missing.failure_reason)
+
+        # 3. Object outside grasp radius failure
+        act_out_of_reach = CandidateAction(
+            action_type=ActionType.GRASP,
+            action_id="act_fail_radius",
+            target_object_id="red_box",
+            target_position=Point3D(x=0.50, y=0.50, z=0.20),
+        )
+        res_radius = controller.dispatch_action(act_out_of_reach, sim_time=3.0, world_version=5)
+        self.assertFalse(res_radius.success)
+        self.assertIn("outside grasp radius", res_radius.failure_reason)
+        self.assertEqual(res_radius.details.get("error_code"), "OBJECT_OUT_OF_REACH")
+        self.assertFalse(controller.is_holding_object)
+
+    # 18. Disturbance parameter alignment
+    def test_18_disturbance_injection_accepts_both_event_and_isaac_disturbance(self):
+        """Verify disturbance interface accepts DisturbanceEvent and IsaacSimDisturbance interchangeably."""
+        runtime = SarthiIsaacRuntime(scenario=self.scenario)
+        runtime.disturbance.spawn = MagicMock()
+
+        # 1. DisturbanceEvent
+        from simulation.core.geometry import SimPoint3D
+        event = DisturbanceEvent.create_path_blocked(
+            event_id="dist_align_1",
+            obstacle_id="obs_align_1",
+            position=SimPoint3D(x=0.25, y=0.05, z=0.20),
+        )
+        with patch("simulation.isaac_runtime.runtime.is_isaac_sim_available", return_value=True):
+            runtime._is_initialized = True
+            ok1 = runtime.inject_disturbance(event)
+        self.assertTrue(ok1)
+        self.assertEqual(runtime.disturbance.position.y, 0.05)
+
+        # 2. IsaacSimDisturbance
+        isaac_dist = IsaacSimDisturbance(
+            event_id="dist_align_2",
+            disturbance_type="PATH_BLOCKED",
+            usd_prim_path="/World/Obstacles/obs_align_2",
+            position={"x": 0.28, "y": -0.04, "z": 0.20},
+            dimensions={"length_x": 0.08, "width_y": 0.08, "height_z": 0.20},
+        )
+        with patch("simulation.isaac_runtime.runtime.is_isaac_sim_available", return_value=True):
+            ok2 = runtime.inject_disturbance(isaac_dist)
+        self.assertTrue(ok2)
+        self.assertEqual(runtime.disturbance.position.x, 0.28)
+
+        # 3. Adapter boundary accepts both
+        mock_backend = MagicMock()
+        mock_backend.inject_disturbance.return_value = True
+        adapter = IsaacSimAdapter(sim_backend=mock_backend)
+        self.assertTrue(adapter.inject_disturbance(event))
+        self.assertTrue(adapter.inject_disturbance(isaac_dist))
+        self.assertEqual(mock_backend.inject_disturbance.call_count, 2)
+
+    # 19. Full closed-loop validation with Isaac runtime backend
+    def test_19_full_closed_loop_validation_with_isaac_runtime_backend(self):
+        """Verify full nominal task sequence across IsaacSimAdapter backed by SarthiIsaacRuntime."""
+        runtime = SarthiIsaacRuntime(scenario=self.scenario)
+        mock_robot = MagicMock()
+        mock_robot.get_joint_positions.return_value = [0.0] * 7
+        mock_robot.get_joint_velocities.return_value = [0.0] * 7
+        mock_ee = MagicMock()
+        mock_ee.get_world_pose.return_value = ([0.0, 0.0, 0.20], [1.0, 0.0, 0.0, 0.0])
+        mock_robot.end_effector = mock_ee
+
+        runtime.articulation_controller.bind_robot(mock_robot)
+
+        with patch("simulation.isaac_runtime.runtime.is_isaac_sim_available", return_value=True):
+            runtime._is_initialized = True
+            adapter = IsaacSimAdapter(sim_backend=runtime)
+
+            # Step 1: APPROACH
+            red_pos = self.scenario.red_object.initial_pose
+            act_app = CandidateAction(
+                action_type=ActionType.APPROACH,
+                action_id="seq_app",
+                target_position=red_pos,
+            )
+            res_app = adapter.execute_action(act_app)
+            self.assertTrue(res_app.success)
+            mock_ee.get_world_pose.return_value = ([red_pos.x, red_pos.y, red_pos.z], [1.0, 0.0, 0.0, 0.0])
+            self.assertTrue(adapter.verify_action_result(act_app))
+
+            # Step 2: GRASP
+            act_grasp = CandidateAction(
+                action_type=ActionType.GRASP,
+                action_id="seq_grasp",
+                target_object_id=self.scenario.red_object.object_id,
+                target_position=red_pos,
+            )
+            res_grasp = adapter.execute_action(act_grasp)
+            self.assertTrue(res_grasp.success)
+            self.assertTrue(adapter.verify_action_result(act_grasp))
+
+            # Step 3: MOVE to blue target
+            blue_pos = self.scenario.blue_target.target_pose
+            act_move = CandidateAction(
+                action_type=ActionType.MOVE,
+                action_id="seq_move",
+                target_position=blue_pos,
+            )
+            res_move = adapter.execute_action(act_move)
+            self.assertTrue(res_move.success)
+            mock_ee.get_world_pose.return_value = ([blue_pos.x, blue_pos.y, blue_pos.z], [1.0, 0.0, 0.0, 0.0])
+            self.assertTrue(adapter.verify_action_result(act_move))
+
+            # Step 4: RELEASE
+            act_rel = CandidateAction(
+                action_type=ActionType.RELEASE,
+                action_id="seq_rel",
+                target_object_id=self.scenario.red_object.object_id,
+                target_position=blue_pos,
+            )
+            res_rel = adapter.execute_action(act_rel)
+            self.assertTrue(res_rel.success)
+            self.assertTrue(adapter.verify_action_result(act_rel))
+
+            # Verify final WorldState meets scenario success criteria
+            final_ws = adapter.get_world_state()
+            self.assertEqual(final_ws.objects[0].position, blue_pos)
+            self.assertEqual(final_ws.objects[0].state, ObjectState.PLACED)
+            is_done, failure_reason = self.scenario.check_success_conditions(final_ws)
+            self.assertTrue(is_done, f"Scenario success criteria failed: {failure_reason}")

@@ -108,12 +108,53 @@ The Decision Engine produces actions of type `CandidateAction`. These are transl
 5. **`RELEASE`**:
    - Opens gripper jaw fingers: `controller.open_gripper()`
    - Detaches payload tracking: `_is_holding_object = False`, `holding_object_id = None`
+   - Persists released coordinates: `_released_object_positions[object_id] = ee_position`
 6. **`STOP`**:
    - Halts all joint motions immediately: `controller.stop()`
 
 ---
 
-## 5. Safety Behavior
+## 5. Closed-Loop Physical State Verification (Phase 7B)
+
+Phase 7B closes the runtime verification loop between commanded actions, physical stage effects, and canonical WorldState:
+
+### A. Live Object Pose Synchronization
+- **While Grasped:** When `controller.is_holding_object` is True, object Cartesian position dynamically follows the live end-effector position (`ee_pos`). `WorldObject.state` is set to `ObjectState.GRASPED`.
+- **After Release:** After a verified `RELEASE`, the object does NOT snap back to `scenario.initial_pose`. Instead:
+  1. Live USD stage prim transforms (`/World/Objects/{object_id}`) are queried if Isaac Sim stage access is available.
+  2. If the USD stage query is unavailable, the last physically released coordinates stored in `_released_object_positions` are used as the deterministic fallback.
+  3. When within `blue_target.tolerance_radius_m` of the destination zone, `WorldObject.state` transitions to `ObjectState.PLACED`.
+
+### B. Action Verification Matrix (`verify_action_result`)
+Unconditional success reporting is strictly replaced by explicit geometric and state invariants:
+
+| Action Primitive | Physical Invariants Verified | Failure Condition & Diagnostics |
+|---|---|---|
+| **`APPROACH`** | End-effector reached target position within configured tolerance ($\le 0.05\,\text{m}$) | End-effector Cartesian distance exceeds tolerance |
+| **`REPOSITION`** | End-effector reached detour waypoint within tolerance ($\le 0.05\,\text{m}$) | End-effector Cartesian distance exceeds tolerance |
+| **`MOVE`** | End-effector reached destination; collision margin to dynamic obstacle observed | Path obstructed by obstacle ($< 0.10\,\text{m}$ margin) or destination not reached |
+| **`GRASP`** | Gripper jaws closed; payload attached; target object within grasp radius ($\le 0.12\,\text{m}$) | Gripper open, payload missing, or target out of reach |
+| **`RELEASE`** | Gripper jaws open; payload detached; object remains at expected release coordinates | Gripper closed, payload still attached, or object displaced |
+| **`STOP`** | Robot articulation is in halted STOP state (`is_stopped == True`) | Articulation velocities non-zero or not stopped |
+
+Failed verifications populate `SarthiIsaacRuntime.last_verification_failure` with actionable diagnostic messages.
+
+### C. Structured Grasp Failure Handling
+Grasp execution in `SarthiArticulationController.dispatch_action()` validates preconditions deterministically:
+1. **Safety STOP check:** Fails with error code `ROBOT_STOPPED` if commanded while halted.
+2. **Missing payload check:** Fails with error code `MISSING_PAYLOAD` if `target_object_id` is empty or unspecified.
+3. **Proximity check:** Fails with error code `OBJECT_OUT_OF_REACH` if distance from end-effector to target exceeds `grasp_threshold_m` (default $0.12\,\text{m}$).
+4. **State preservation:** Failed grasps return `ActionExecutionResult(success=False, failure_reason=...)` and **never corrupt** `_world_state_version`, payload ownership, or robot state.
+
+### D. Disturbance Parameter Normalization
+The runtime boundary (`SarthiIsaacRuntime.inject_disturbance` and `IsaacSimAdapter.inject_disturbance`) polymorphically accepts both:
+- `DisturbanceEvent` (conceptual SĀRTHI event from Decision Engine / test harness)
+- `IsaacSimDisturbance` (USD stage specification model)
+Both are normalized internally into canonical USD obstacle coordinates and update the active collision geometry.
+
+---
+
+## 6. Safety Behavior
 
 1. **Emergency STOP:**
    - `SarthiArticulationController.stop()` immediately:
@@ -128,18 +169,15 @@ The Decision Engine produces actions of type `CandidateAction`. These are transl
 
 ---
 
-## 6. What Still Requires Real Isaac Sim Execution (Next Steps)
+## 7. What Still Requires Real Isaac Sim Execution (Current Limitations)
 
-To transition from the current unit-tested boundary to execution on a physical or cloud NVIDIA GPU host:
+The offline testbed completely validates state invariants, geometric tolerances, and action dispatch without requiring NVIDIA GPU hardware. However, the following physical phenomena strictly require live NVIDIA Isaac Sim PhysX execution:
 
-1. **NVIDIA GPU Host Environment:**
-   - Workstation or cloud VM with NVIDIA RTX GPU (>= 8GB VRAM) and NVIDIA Driver >= 535.
-   - NVIDIA Isaac Sim 6.x installed with Omniverse Python (`python.bat` / `./python.sh`).
-2. **USD Franka Asset Availability:**
-   - Access to the Franka Emika Panda asset on Omniverse Nucleus (`omniverse://localhost/NVIDIA/Assets/Isaac/4.5/Isaac/Robots/Franka/franka.usd`) or local disk.
-3. **PhysX Joint Drive Tuning:**
-   - Connecting `omni.isaac.core.controllers.ArticulationController` or RMPflow Differential IK to the Franka joint drive stiffness and damping parameters during multi-step trajectory convergence.
-4. **Launch Command:**
+1. **Real PhysX Multi-Tick Trajectory Convergence:**
+   - Physical convergence depends on joint motor PD gains (stiffness $K_p$, damping $K_d$) and PhysX substepping against contact forces.
+2. **Contact Friction & Payload Slip Dynamics:**
+   - Physical finger friction and normal force calculations against the cylinder mesh require PhysX contact solvers.
+3. **Launch Command on GPU Host:**
    ```bash
    python.bat scripts/isaac_sim/run_sarthi_validation.py --config configs/isaac_sim_validation.yaml --headless
    ```

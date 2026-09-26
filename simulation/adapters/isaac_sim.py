@@ -429,16 +429,80 @@ class IsaacSimAdapter(SimulationAdapter):
         else:
             raise TypeError(f"Backend returned unexpected result type: {type(result).__name__}")
 
-    def inject_disturbance(self, disturbance: DisturbanceEvent) -> bool:
+    @classmethod
+    def build_default_expected_outcome(
+        cls,
+        action: Union[CandidateAction, Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """
+        Derives structured expected outcome for physical verification.
+        Does not introduce simulator-specific information into the Decision Engine.
+        """
+        if isinstance(action, dict):
+            act_type_val = action.get("action_type")
+            act_type = ActionType(act_type_val) if isinstance(act_type_val, str) else act_type_val
+            target_obj = action.get("target_object_id")
+            target_pos = action.get("target_position")
+        else:
+            act_type = action.action_type
+            target_obj = action.target_object_id
+            target_pos = action.target_position
+
+        expected: Dict[str, Any] = {}
+        if act_type == ActionType.APPROACH:
+            expected["gripper_open"] = True
+            if target_pos:
+                expected["target_position"] = target_pos
+        elif act_type == ActionType.GRASP:
+            expected["gripper_open"] = False
+            if target_obj:
+                expected["carrying_object_id"] = str(target_obj)
+            if target_pos:
+                expected["target_position"] = target_pos
+        elif act_type == ActionType.MOVE:
+            if target_pos:
+                expected["target_position"] = target_pos
+        elif act_type == ActionType.REPOSITION:
+            if target_pos:
+                expected["target_position"] = target_pos
+        elif act_type == ActionType.RELEASE:
+            expected["gripper_open"] = True
+            expected["carrying_object_id"] = None
+            if target_pos:
+                expected["target_position"] = target_pos
+        elif act_type == ActionType.STOP:
+            expected["is_stopped"] = True
+
+        return expected
+
+    def inject_disturbance(
+        self,
+        disturbance: Union[DisturbanceEvent, IsaacSimDisturbance, Dict[str, Any]],
+    ) -> bool:
         """
         Injects environmental disturbance (e.g. PATH_BLOCKED obstacle) into USD stage.
+        Accepts both DisturbanceEvent and IsaacSimDisturbance (or dict).
         Requires active backend or live Isaac Sim runtime.
         """
         if self._backend is None:
             require_isaac_sim()
             raise NotImplementedError("Isaac Sim disturbance injection is pending GPU environment.")
 
-        isaac_dist = self.translate_disturbance(disturbance)
+        if isinstance(disturbance, DisturbanceEvent):
+            isaac_dist = self.translate_disturbance(disturbance)
+        elif isinstance(disturbance, IsaacSimDisturbance):
+            isaac_dist = disturbance
+        elif isinstance(disturbance, dict):
+            if "usd_prim_path" in disturbance:
+                isaac_dist = IsaacSimDisturbance.model_validate(disturbance)
+            else:
+                dist_ev = DisturbanceEvent.model_validate(disturbance)
+                isaac_dist = self.translate_disturbance(dist_ev)
+        else:
+            raise TypeError(
+                f"Expected DisturbanceEvent, IsaacSimDisturbance, or dict, got {type(disturbance).__name__}"
+            )
+
         return bool(self._backend.inject_disturbance(isaac_dist))
 
     def verify_action_result(
@@ -454,4 +518,6 @@ class IsaacSimAdapter(SimulationAdapter):
             require_isaac_sim()
             raise NotImplementedError("Isaac Sim verification is pending GPU environment.")
 
-        return bool(self._backend.verify_action_result(action, expected_outcome))
+        # Provide structured default expected outcome if not explicitly supplied
+        outcome = dict(expected_outcome) if expected_outcome else self.build_default_expected_outcome(action)
+        return bool(self._backend.verify_action_result(action, outcome))
