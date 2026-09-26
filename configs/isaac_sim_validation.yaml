@@ -9,4 +9,10 @@ save_stage: null
 output_directory: "logs/isaac_validation"
 max_steps: 10
 enable_trace: true
-robot_asset_path: null
+# Configurable robot USD asset path.
+# Default intended robot: Standard NVIDIA Franka Emika Panda asset.
+# Must point to a valid USD on the target GPU host (Omniverse Nucleus or local filesystem).
+# Note: Do not assume this asset physically exists on the local development machine.
+# Real Isaac Sim execution will fail clearly if this asset path is missing or invalid.
+robot_asset_path: "omniverse://localhost/NVIDIA/Assets/Isaac/4.5/Isaac/Robots/Franka/franka.usd"
+default_robot_asset_path: "omniverse://localhost/NVIDIA/Assets/Isaac/4.5/Isaac/Robots/Franka/franka.usd"

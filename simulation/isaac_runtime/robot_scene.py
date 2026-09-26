@@ -22,6 +22,9 @@ class RobotSceneConfig:
     """
     Configuration parameters for robot asset loading in Isaac Sim.
     """
+    DEFAULT_FRANKA_ASSET_PATH: str = (
+        "omniverse://localhost/NVIDIA/Assets/Isaac/4.5/Isaac/Robots/Franka/franka.usd"
+    )
 
     def __init__(
         self,
@@ -67,7 +70,7 @@ class SarthiRobotPrim:
 
         Raises:
             IsaacSimRuntimeError: If Isaac Sim is unavailable or if the configured
-                                  robot asset path is missing.
+                                  robot asset path is missing or invalid.
         """
         if not is_isaac_sim_available():
             from simulation.isaac_runtime.runtime import IsaacSimRuntimeError
@@ -75,13 +78,28 @@ class SarthiRobotPrim:
                 "Isaac Sim runtime is required to instantiate robot assets."
             )
 
-        if not self.robot_asset_path:
+        if not self.robot_asset_path or not self.robot_asset_path.strip():
             from simulation.isaac_runtime.runtime import IsaacSimRuntimeError
             raise IsaacSimRuntimeError(
                 f"Missing robot asset path for '{self.robot_id}'. "
                 "Specify a valid USD robot asset path via RobotSceneConfig. "
                 "Silent substitution of robot models is strictly disallowed."
             )
+
+        # Validate local file path existence if not using a remote URL protocol
+        is_remote = (
+            self.robot_asset_path.startswith("omniverse://")
+            or self.robot_asset_path.startswith("http://")
+            or self.robot_asset_path.startswith("https://")
+        )
+        if not is_remote:
+            import os
+            if not os.path.exists(self.robot_asset_path):
+                from simulation.isaac_runtime.runtime import IsaacSimRuntimeError
+                raise IsaacSimRuntimeError(
+                    f"Configured robot asset path not found on disk: '{self.robot_asset_path}'. "
+                    "Ensure the USD file exists before running Isaac Sim."
+                )
 
         from omni.isaac.core.robots import Robot
         from omni.isaac.core.utils.stage import add_reference_to_stage
