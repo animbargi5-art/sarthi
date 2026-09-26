@@ -268,6 +268,12 @@ def main() -> None:
         default=None,
         help="Optional destination path to export the assembled USD stage",
     )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        help="Optional output directory or JSON file path for execution trace",
+    )
 
     args = parser.parse_args()
 
@@ -284,7 +290,7 @@ def main() -> None:
     headless = args.headless or cfg.get("headless", True)
     robot_asset = args.robot_asset or cfg.get("robot_asset_path")
     save_stage = args.save_stage or cfg.get("save_stage")
-    out_dir = cfg.get("output_directory", "logs/isaac_validation")
+    out_target = args.output or cfg.get("output_directory", "logs/isaac_validation")
     max_steps = int(cfg.get("max_steps", 10))
     enable_trace = bool(cfg.get("enable_trace", True))
 
@@ -323,8 +329,13 @@ def main() -> None:
 
     # Save trace log
     if enable_trace and validator.trace:
+        if out_target.endswith(".json"):
+            trace_path = out_target
+            out_dir = os.path.dirname(trace_path) or "."
+        else:
+            out_dir = out_target
+            trace_path = os.path.join(out_dir, "validation_trace.json")
         os.makedirs(out_dir, exist_ok=True)
-        trace_path = os.path.join(out_dir, "validation_trace.json")
         with open(trace_path, "w", encoding="utf-8") as f:
             json.dump([t.model_dump() for t in validator.trace], f, indent=2, default=str)
         print(f"[ISAAC] Execution trace saved to: {trace_path}")

@@ -217,6 +217,21 @@ class TestIsaacValidationBoundary(unittest.TestCase):
         self.assertIn("[ISAAC] phase=FINAL_VERIFICATION", log_output)
         self.assertIn("[ISAAC] phase=SUCCESS", log_output)
 
+    # 9. CLI --output argument supported
+    def test_09_cli_output_argument_supported(self):
+        """Verify run_sarthi_validation CLI accepts --output without argument parsing error."""
+        stderr_capture = io.StringIO()
+        with patch("sys.argv", ["run_sarthi_validation.py", "--output", "/workspace/sarthi/artifacts"]):
+            with patch("sys.stderr", stderr_capture):
+                with self.assertRaises(SystemExit) as ctx:
+                    validation_main()
+                # Exits with code 1 due to Isaac Sim availability check, NOT code 2 (argparse error)
+                self.assertEqual(ctx.exception.code, 1)
+
+        err_output = stderr_capture.getvalue()
+        self.assertIn("Isaac Sim runtime is required", err_output)
+        self.assertNotIn("unrecognized arguments", err_output)
+
 
 if __name__ == "__main__":
     unittest.main()
