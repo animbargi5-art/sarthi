@@ -1,0 +1,200 @@
+{
+  "timestamp": "2026-09-27T11:35:59.957057+00:00",
+  "project": "S\u0100RTHI",
+  "simulator": "MuJoCo",
+  "simulator_version": "3.14.0",
+  "robot": "Franka Emika Panda",
+  "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+  "model_provider": "NebiusNemotronProvider",
+  "inference_endpoint": "https://api.tokenfactory.nebius.com/v1",
+  "instruction": "Move the red object to the blue target.",
+  "task_understanding": {
+    "task_id": "task_move_red_to_blue_001",
+    "objective": "Move the red object to the blue target location",
+    "target_object": "red_object",
+    "target_location": "blue_target",
+    "required_actions": [
+      "APPROACH",
+      "GRASP",
+      "MOVE",
+      "RELEASE"
+    ],
+    "confidence": 0.95,
+    "reasoning_summary": "Instruction clearly identifies a red manipulable object and a blue destination zone. Standard pick-and-place sequence inferred."
+  },
+  "actions": [
+    "APPROACH",
+    "GRASP",
+    "REPOSITION",
+    "MOVE",
+    "RELEASE"
+  ],
+  "selected_actions": [
+    {
+      "step": 1,
+      "action_type": "APPROACH",
+      "action_id": "act_approach_target_obj",
+      "success": true
+    },
+    {
+      "step": 2,
+      "action_type": "GRASP",
+      "action_id": "act_grasp_target_obj",
+      "success": true
+    },
+    {
+      "step": 3,
+      "action_type": "REPOSITION",
+      "action_id": "act_reposition_clearance",
+      "success": true
+    },
+    {
+      "step": 4,
+      "action_type": "MOVE",
+      "action_id": "act_move_to_target_zone",
+      "success": true
+    },
+    {
+      "step": 5,
+      "action_type": "RELEASE",
+      "action_id": "act_release_gripper",
+      "success": true
+    }
+  ],
+  "candidate_evaluations": [
+    {
+      "step": 2,
+      "action_id": "act_stop_hold",
+      "action_type": "STOP",
+      "is_valid": true,
+      "overall_score": 0.7355,
+      "rejection_reasons": []
+    },
+    {
+      "step": 2,
+      "action_id": "act_approach_target_obj",
+      "action_type": "APPROACH",
+      "is_valid": true,
+      "overall_score": 0.7249,
+      "rejection_reasons": []
+    },
+    {
+      "step": 2,
+      "action_id": "act_grasp_target_obj",
+      "action_type": "GRASP",
+      "is_valid": false,
+      "overall_score": 0.0,
+      "rejection_reasons": [
+        "PreconditionViolation: Gripper already holding object 'red_object_01'"
+      ]
+    },
+    {
+      "step": 2,
+      "action_id": "act_move_to_target_zone",
+      "action_type": "MOVE",
+      "is_valid": false,
+      "overall_score": 0.0,
+      "rejection_reasons": [
+        "BlockedPath: Obstacle 'blocking_barrier_01' intersects trajectory (min distance 0.066m < required 0.082m)"
+      ]
+    },
+    {
+      "step": 2,
+      "action_id": "act_reposition_clearance",
+      "action_type": "REPOSITION",
+      "is_valid": true,
+      "overall_score": 0.7911,
+      "rejection_reasons": []
+    },
+    {
+      "step": 2,
+      "action_id": "act_release_gripper",
+      "action_type": "RELEASE",
+      "is_valid": true,
+      "overall_score": 0.6733,
+      "rejection_reasons": []
+    }
+  ],
+  "rejected_actions": [
+    {
+      "step": 2,
+      "action_id": "act_grasp_target_obj",
+      "action_type": "GRASP",
+      "is_valid": false,
+      "overall_score": 0.0,
+      "rejection_reasons": [
+        "PreconditionViolation: Gripper already holding object 'red_object_01'"
+      ]
+    },
+    {
+      "step": 2,
+      "action_id": "act_move_to_target_zone",
+      "action_type": "MOVE",
+      "is_valid": false,
+      "overall_score": 0.0,
+      "rejection_reasons": [
+        "BlockedPath: Obstacle 'blocking_barrier_01' intersects trajectory (min distance 0.066m < required 0.082m)"
+      ]
+    }
+  ],
+  "disturbance": {
+    "type": "PATH_BLOCKED",
+    "injected": true,
+    "injected_at_step": 2,
+    "obstacle_position": {
+      "x": 0.325,
+      "y": -0.025,
+      "z": 0.12
+    },
+    "pre_disturbance_ws_version": 3,
+    "post_disturbance_ws_version": 4,
+    "recovery_action": "REPOSITION"
+  },
+  "world_state_versions": [
+    2,
+    3,
+    5,
+    6,
+    7
+  ],
+  "execution_durations": {
+    "cognition_seconds": 2.254,
+    "wall_clock_seconds": 1.568,
+    "simulation_physics_seconds": 4.698
+  },
+  "recovery_count": 1,
+  "final_object_position": {
+    "x": 0.4129,
+    "y": -0.1481,
+    "z": 0.1998
+  },
+  "target_position": {
+    "x": 0.4,
+    "y": -0.2,
+    "z": 0.171
+  },
+  "placement_error": 0.0535,
+  "tolerance": 0.06,
+  "gripper_state": "OPEN",
+  "gripper_released": true,
+  "final_object_state": "PLACED",
+  "overall_result": "COMPLETED",
+  "physical_verification_passed": true,
+  "event_trace": [
+    "[01] TASK_RECEIVED: Move the red object to the blue target.",
+    "[02] NEMOTRON_TASK_UNDERSTANDING: target='red_object', zone='blue_target', actions=['APPROACH', 'GRASP', 'MOVE', 'RELEASE']",
+    "[03] WORLD_STATE_OBSERVED: v1, Robot=(0.55, -0.00, 0.52)",
+    "[04] DECISION_SELECTED: Selected APPROACH (act_approach_target_obj)",
+    "[05] APPROACH_EXECUTED: EE reached standoff near object (v2)",
+    "[06] GRASP_VERIFIED: Gripper clamped target object 'red_object_01'",
+    "[07] PATH_BLOCKED_INJECTED: Obstacle placed at (0.325, -0.025, 0.120)",
+    "[08] WORLD_STATE_CHANGED: Version advanced v3 -> v4 with keepout constraint",
+    "[09] MOVE_REJECTED_BLOCKED_PATH: Constraint validation rejected 'act_move_to_target_zone': BlockedPath: Obstacle 'blocking_barrier_01' intersects trajectory (min distance 0.066m < required 0.082m)",
+    "[10] RECOVERY_DECISION_REPOSITION: Selected REPOSITION (act_reposition_clearance) with clearance z=0.351m",
+    "[11] REPOSITION_VERIFIED: Elevated object to clearance altitude z=0.333m",
+    "[12] MOVE_VERIFIED: Navigated over obstacle to target zone (0.40, -0.19)",
+    "[13] RELEASE_VERIFIED: Gripper opened; object released in target zone",
+    "[14] FINAL_PLACEMENT_VERIFIED: Object at (0.413, -0.148, 0.200), error=0.0535m <= tol=0.0600m",
+    "[15] TASK_COMPLETED: Physical pick-and-place with obstacle avoidance succeeded."
+  ]
+}

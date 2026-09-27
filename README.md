@@ -112,13 +112,28 @@ sarthi/
 
 ---
 
-## Project Status
+---
 
-- **Phase 0 (Current):** Repository foundation, architecture specification, and interface contracts.
-- **Phase 1 (Upcoming):** Backend service initialization and Nebius Token Factory / NVIDIA Nemotron integration.
+## MuJoCo Physical AI Validation
+
+SĀRTHI includes a MuJoCo-based physical simulation backend used to validate:
+- **Embodied Decision-Making**: Translating cognitive goals into verifiable physical action sequences.
+- **Physical Action Execution**: Inverse kinematics and joint control of a 7-DOF Franka Emika Panda arm.
+- **Disturbance Handling**: Injecting dynamic physical obstacles (`PATH_BLOCKED`) post-grasp.
+- **Adaptive Recovery**: Autonomous rejection of collision paths and deterministic selection of recovery behaviors.
+- **State Verification**: Continuous physical evidence extraction from simulation contacts and coordinates.
+
+### Technology Stack & Roles
+- **NVIDIA Nemotron**: Operates in the cognitive layer to parse human natural-language instructions into structured task semantics (`TaskUnderstanding`).
+- **Nebius Token Factory**: Provides high-throughput, low-latency cloud inference hosting for NVIDIA Nemotron.
+- **MuJoCo**: Provides the deterministic physics engine modeling rigid-body dynamics, contact mechanics, and collision manifolds.
+- **SĀRTHI Decision Engine**: Serves as the sole deterministic physical-action authority, evaluating constraints and ranking candidate actions.
+
+For complete execution instructions and telemetry schemas, see [docs/MUJOCO_VALIDATION.md](file:///d:/Projects/SĀRTHI/docs/MUJOCO_VALIDATION.md).
 
 ---
 
-## License
+## License & Third-Party Attribution
 
-This project is licensed under the MIT License - see the [LICENSE](file:///d:/Projects/SĀRTHI/LICENSE) file for details.
+- **SĀRTHI Core**: Licensed under the MIT License - see the [LICENSE](file:///d:/Projects/SĀRTHI/LICENSE) file for details.
+- **Franka Emika Panda MJCF Model**: Sourced from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie/tree/main/franka_emika_panda) (Google DeepMind / Franka Emika GmbH), licensed under Apache 2.0. Upstream model files remain unmodified and are included in scenario compositions.

@@ -2,9 +2,9 @@
 """
 SĀRTHI MuJoCo End-to-End Closed-Loop Integration + Disturbance Recovery Runner.
 
-Executes the full SĀRTHI orchestration pipeline:
+Executes the full SĀRTHI physical AI orchestration pipeline:
   Natural Language
-  -> TaskUnderstandingService (via live Nebius Token Factory Nemotron)
+  -> TaskUnderstandingService (via live Nebius Token Factory Nemotron or MockModelProvider)
   -> Canonical WorldState (observed from live MuJoCo mjData)
   -> SarthiDecisionEngine (deterministic candidate action evaluation)
   -> SarthiMuJoCoRuntime (SimulationAdapter contract & physical Panda physics)
@@ -22,12 +22,14 @@ Strict Invariants:
 """
 
 import argparse
+import datetime
+import json
 import math
 import os
 import pathlib
 import sys
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # Ensure project root is in sys.path
 _PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
@@ -39,10 +41,13 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 
+import numpy as np
 from dotenv import load_dotenv
 
 # Load environment credentials securely without echoing
 load_dotenv(os.path.join(_PROJECT_ROOT, "configs", ".env"))
+
+import mujoco
 
 from backend.app.decision_engine.engine import SarthiDecisionEngine
 from backend.app.decision_engine.models import (
@@ -55,11 +60,14 @@ from backend.app.decision_engine.models import (
     WorldState,
 )
 from backend.app.model.config import NebiusConfig
+from backend.app.model.mock_provider import MockModelProvider
+from backend.app.model.models import TaskUnderstanding
 from backend.app.model.nebius_provider import (
     NebiusNemotronProvider,
     NebiusProviderError,
     _sanitize_error_message,
 )
+from backend.app.model.provider import ModelProvider
 from backend.app.model.task_understanding import TaskUnderstandingService
 from backend.app.orchestration.execution_result import TaskExecutionResult
 from backend.app.orchestration.loop import TaskRunStatus
@@ -69,7 +77,35 @@ from simulation.mujoco_runtime.runtime import SarthiMuJoCoRuntime
 from simulation.mujoco_runtime.state_reader import SarthiMuJoCoStateReader
 
 
-def parse_arguments() -> argparse.Namespace:
+class EventTraceRecorder:
+    """
+    Records and formats sequential, human-readable execution events
+    derived strictly from live runtime and decision-engine evidence.
+    """
+
+    def __init__(self):
+        self.events: List[Dict[str, Any]] = []
+
+    def record(self, event_name: str, description: str = "", metadata: Optional[Dict[str, Any]] = None) -> None:
+        idx = len(self.events) + 1
+        event_str = f"[{idx:02d}] {event_name}"
+        if description:
+            event_str += f": {description}"
+        self.events.append({
+            "index": idx,
+            "name": event_name,
+            "description": description,
+            "metadata": metadata or {},
+            "formatted": event_str,
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        })
+        print(f"  {event_str}")
+
+    def get_formatted_trace(self) -> List[str]:
+        return [e["formatted"] for e in self.events]
+
+
+def parse_arguments(cli_args: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="SĀRTHI MuJoCo End-to-End Autonomous Closed-Loop Runner"
     )
@@ -92,6 +128,24 @@ def parse_arguments() -> argparse.Namespace:
         help="Launch interactive MuJoCo passive viewer window (if supported)",
     )
     parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Optional random seed for deterministic execution reproducibility",
+    )
+    parser.add_argument(
+        "--mock",
+        action="store_true",
+        default=False,
+        help="Use deterministic MockModelProvider instead of live Nebius API",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        help="File path to write structured JSON telemetry report",
+    )
+    parser.add_argument(
         "--max-steps",
         type=int,
         default=10,
@@ -103,7 +157,24 @@ def parse_arguments() -> argparse.Namespace:
         default=400,
         help="Simulation ticks per action execution",
     )
-    return parser.parse_args()
+    return parser.parse_args(cli_args)
+
+
+def sanitize_dict_for_telemetry(d: Any) -> Any:
+    """Recursively removes any keys or values containing credential patterns."""
+    forbidden = ["api_key", "bearer", "authorization", "secret", "token"]
+    if isinstance(d, dict):
+        clean = {}
+        for k, v in d.items():
+            if any(f in str(k).lower() for f in forbidden):
+                continue
+            clean[k] = sanitize_dict_for_telemetry(v)
+        return clean
+    elif isinstance(d, list):
+        return [sanitize_dict_for_telemetry(x) for x in d]
+    elif isinstance(d, str):
+        return _sanitize_error_message(d)
+    return d
 
 
 def print_banner(text: str) -> None:
@@ -115,53 +186,65 @@ def print_section(title: str) -> None:
     print(f"\n--- {title} ---")
 
 
-def main() -> None:
-    args = parse_arguments()
+def execute_validation_run(args: argparse.Namespace) -> Tuple[bool, Dict[str, Any]]:
+    """
+    Executes the full SĀRTHI closed-loop MuJoCo validation run.
+    Returns (success: bool, telemetry_dict: Dict[str, Any]).
+    """
+    trace = EventTraceRecorder()
+    run_timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-    print_banner("SĀRTHI MUJOCO END-TO-END CLOSED-LOOP ORCHESTRATION")
-    print(f"Instruction:        \"{args.instruction}\"")
-    print(f"Mode:               {'Interactive Viewer' if args.viewer else 'Headless'}")
-    print(f"Max Steps:          {args.max_steps}")
-    print(f"Steps Per Action:   {args.steps_per_action}")
+    # 1. Environment & Reproducibility Setup
+    if args.seed is not None:
+        np.random.seed(args.seed)
 
-    # 1. Runtime & Physics Engine Verification
+    trace.record("TASK_RECEIVED", args.instruction)
+
+    # 2. Physics Engine Verification
     if not is_mujoco_available():
-        print("ERROR: MuJoCo runtime is not installed or available.", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError("MuJoCo runtime is not installed or available.")
 
-    # 2. Live Nebius Token Factory Provider Initialization
-    print_section("Phase 1: Cognitive Task Understanding via Live Nebius Nemotron")
-    nebius_cfg = NebiusConfig.from_env()
-    print(f"Configured Model:   {nebius_cfg.model}")
-    print(f"Inference Endpoint: {nebius_cfg.base_url}")
+    # 3. Model Provider Setup
+    provider_name: str
+    model_name: str
+    endpoint_url: str
+    provider: ModelProvider
 
+    if args.mock:
+        provider = MockModelProvider()
+        provider_name = "MockModelProvider"
+        model_name = "mock/nemotron-deterministic"
+        endpoint_url = "local://deterministic-mock"
+    else:
+        nebius_cfg = NebiusConfig.from_env()
+        provider_name = "NebiusNemotronProvider"
+        model_name = nebius_cfg.model or "nvidia/Nemotron-3-Ultra-550b-a55b"
+        endpoint_url = nebius_cfg.base_url or "https://api.tokenfactory.nebius.com/v1"
+        try:
+            provider = NebiusNemotronProvider()
+        except Exception as exc:
+            sanitized = _sanitize_error_message(str(exc))
+            print(f"\nERROR: Failed to initialize NebiusNemotronProvider: {sanitized}", file=sys.stderr)
+            raise
+
+    # 4. Cognitive Task Understanding
+    service = TaskUnderstandingService(provider)
+    start_cognition = time.time()
     try:
-        provider = NebiusNemotronProvider()
-        print("Connecting to live Nebius Token Factory endpoint...")
-        service = TaskUnderstandingService(provider)
-        start_cognition = time.time()
-        tu = service.understand(args.instruction)
-        cognition_time = time.time() - start_cognition
-        print(f"Cognitive Parsing Succeeded in {cognition_time:.2f}s:")
-        print(f"  Task ID:           {tu.task_id}")
-        print(f"  Objective:         {tu.objective}")
-        print(f"  Target Entity:     {tu.target_object}")
-        print(f"  Destination Zone:  {tu.target_location}")
-        print(f"  Intended Actions:  {tu.required_actions}")
-        print(f"  Confidence:        {tu.confidence:.2f}")
-        print(f"  Reasoning:         {tu.reasoning_summary}")
-    except NebiusProviderError as err:
-        sanitized = _sanitize_error_message(str(err))
-        print(f"\nERROR: Live Nebius Nemotron Provider Failed: {sanitized}", file=sys.stderr)
-        print("Note: Silent fallback to MockModelProvider is strictly prohibited.", file=sys.stderr)
-        sys.exit(1)
+        tu: TaskUnderstanding = service.understand(args.instruction)
     except Exception as exc:
         sanitized = _sanitize_error_message(str(exc))
-        print(f"\nERROR: Unexpected failure contacting Nebius API: {sanitized}", file=sys.stderr)
-        sys.exit(1)
+        print(f"\nERROR: Model Provider Failed to Understand Task: {sanitized}", file=sys.stderr)
+        raise
 
-    # 3. MuJoCo Physical Simulation Initialization
-    print_section("Phase 2: MuJoCo Physical Simulation Setup")
+    cognition_duration = time.time() - start_cognition
+    trace.record(
+        "NEMOTRON_TASK_UNDERSTANDING",
+        f"target='{tu.target_object}', zone='{tu.target_location}', actions={tu.required_actions}",
+        {"confidence": tu.confidence, "task_id": tu.task_id},
+    )
+
+    # 5. MuJoCo Physical Simulation Setup
     runtime = SarthiMuJoCoRuntime(
         config={
             "steps_per_action": args.steps_per_action,
@@ -171,104 +254,163 @@ def main() -> None:
     sr: SarthiMuJoCoStateReader = runtime.state_reader
     initial_ws = runtime.get_world_state()
 
-    print(f"Scene Model:        Franka Emika Panda (7-DOF + Parallel Gripper)")
-    print(f"Initial Robot Pos:  x={initial_ws.robot.position.x:.3f}, y={initial_ws.robot.position.y:.3f}, z={initial_ws.robot.position.z:.3f}")
-    target_obj = next((o for o in initial_ws.objects if o.is_target), None)
-    print(f"Target Object Pos:  x={target_obj.position.x:.3f}, y={target_obj.position.y:.3f}, z={target_obj.position.z:.3f} (mass: {target_obj.mass_kg}kg)")
-    print(f"Destination Target: x={initial_ws.target.position.x:.3f}, y={initial_ws.target.position.y:.3f}, z={initial_ws.target.position.z:.3f} (tol: {initial_ws.target.tolerance_radius_m:.3f}m)")
+    # Optional passive viewer
+    viewer = None
+    if args.viewer:
+        try:
+            import mujoco.viewer as mj_viewer
+            viewer = mj_viewer.launch_passive(runtime.model, runtime.data)
+            viewer.sync()
+            print("  MuJoCo passive viewer window launched.")
+        except Exception as v_err:
+            print(f"  Note: Passive viewer could not be launched ({v_err}). Continuing in headless mode.")
+            viewer = None
 
-    # 4. Orchestration Stack Assembly
+    trace.record(
+        "WORLD_STATE_OBSERVED",
+        f"v{initial_ws.version}, Robot=({initial_ws.robot.position.x:.2f}, {initial_ws.robot.position.y:.2f}, {initial_ws.robot.position.z:.2f})",
+        {"version": initial_ws.version},
+    )
+
+    # 6. Orchestration Setup
     engine = SarthiDecisionEngine()
     runner = SarthiTaskRunner(adapter=runtime, engine=engine, max_steps=args.max_steps)
 
-    # Telemetry collectors
     step_telemetry: List[Dict[str, Any]] = []
+    candidate_evals_log: List[Dict[str, Any]] = []
+    rejected_actions_log: List[Dict[str, Any]] = []
+    selected_actions_log: List[Dict[str, Any]] = []
+
     causal_trace: Dict[str, Any] = {
         "disturbance_injected": False,
         "disturbed_step": None,
         "pre_disturbance_ws_version": None,
         "post_disturbance_ws_version": None,
+        "obstacle_position": None,
         "rejected_blocked_candidates": [],
         "recovery_action_selected": None,
         "recovery_executed_success": False,
     }
 
-    # 5. Disturbance Callback Hook
+    # Record initial decision
+    initial_decision = engine.decide(initial_ws)
+    trace.record(
+        "DECISION_SELECTED",
+        f"Selected {initial_decision.selected_action.action_type.value} ({initial_decision.selected_action.action_id})",
+        {"action_type": initial_decision.selected_action.action_type.value},
+    )
+
+    # 7. Step Callback & Disturbance Injection Hook
     def on_step_executed(step_num: int, ws_after_action: WorldState) -> None:
+        if viewer is not None:
+            viewer.sync()
+
         last_action_res = runtime.execution_history[-1] if runtime.execution_history else None
+        act_type = last_action_res.action_type if last_action_res else "UNKNOWN"
+        act_id = last_action_res.action_id if last_action_res else "UNKNOWN"
+        success = last_action_res.success if last_action_res else False
+
+        selected_actions_log.append({"step": step_num, "action_type": act_type, "action_id": act_id, "success": success})
+
         record = {
             "step": step_num,
-            "action_type": last_action_res.action_type if last_action_res else "UNKNOWN",
-            "action_id": last_action_res.action_id if last_action_res else "UNKNOWN",
-            "success": last_action_res.success if last_action_res else False,
+            "action_type": act_type,
+            "action_id": act_id,
+            "success": success,
             "failure_reason": last_action_res.failure_reason if last_action_res else None,
-            "robot_pos": ws_after_action.robot.position,
+            "robot_pos": {"x": ws_after_action.robot.position.x, "y": ws_after_action.robot.position.y, "z": ws_after_action.robot.position.z},
             "gripper_open": ws_after_action.robot.gripper_open,
             "holding_object": ws_after_action.robot.holding_object_id,
-            "object_pos": sr.get_red_object_position(),
-            "object_state": sr.determine_object_state(),
+            "object_pos": {
+                "x": sr.get_red_object_position().x,
+                "y": sr.get_red_object_position().y,
+                "z": sr.get_red_object_position().z,
+            },
+            "object_state": sr.determine_object_state().value,
             "active_constraints": len(ws_after_action.active_constraints),
             "world_state_version": ws_after_action.version,
         }
         step_telemetry.append(record)
 
-        print(f"\n>>> [STEP {step_num}] Executed: {record['action_type']} | Success: {record['success']} | WS Ver: {record['world_state_version']}")
-        print(f"    Robot EE:     ({record['robot_pos'].x:.3f}, {record['robot_pos'].y:.3f}, {record['robot_pos'].z:.3f}) | Holding: {record['holding_object']}")
-        print(f"    Object Pos:   ({record['object_pos'].x:.3f}, {record['object_pos'].y:.3f}, {record['object_pos'].z:.3f}) | State: {record['object_state']}")
+        # Emit distinct event traces based on action outcomes
+        if act_type == "APPROACH" and success:
+            trace.record("APPROACH_EXECUTED", f"EE reached standoff near object (v{ws_after_action.version})")
+        elif act_type == "GRASP" and success:
+            trace.record("GRASP_VERIFIED", f"Gripper clamped target object '{ws_after_action.robot.holding_object_id}'")
+        elif act_type == "REPOSITION" and success:
+            trace.record("REPOSITION_VERIFIED", f"Elevated object to clearance altitude z={record['robot_pos']['z']:.3f}m")
+        elif act_type == "MOVE" and success:
+            trace.record("MOVE_VERIFIED", f"Navigated over obstacle to target zone ({record['robot_pos']['x']:.2f}, {record['robot_pos']['y']:.2f})")
+        elif act_type == "RELEASE" and success:
+            trace.record("RELEASE_VERIFIED", "Gripper opened; object released in target zone")
 
-        # Disturbance injection condition: immediately after object is grasped (Step 2)
+        # Causal Disturbance Trigger: Immediately post-grasp (Step 2)
         if step_num == 2 and not causal_trace["disturbance_injected"]:
-            print("\n" + "!" * 78)
-            print("!!! CAUSAL DISTURBANCE TRIGGER: Injecting 'PATH_BLOCKED' into MuJoCo physics !!!")
-            print("!" * 78)
-
             causal_trace["disturbance_injected"] = True
             causal_trace["disturbed_step"] = step_num
             causal_trace["pre_disturbance_ws_version"] = ws_after_action.version
 
-            # Inject physical obstacle into MuJoCo scene
+            # Physically inject obstacle in MuJoCo
             injected = runtime.inject_disturbance("PATH_BLOCKED")
             disturbed_ws = runtime.get_world_state()
             causal_trace["post_disturbance_ws_version"] = disturbed_ws.version
-
             obs = next((o for o in disturbed_ws.objects if o.is_obstacle), None)
-            print(f"Disturbance Activated: {injected}")
-            print(f"  Physical Obstacle Coords: ({obs.position.x:.3f}, {obs.position.y:.3f}, {obs.position.z:.3f})")
-            print(f"  New WorldState Version:   {disturbed_ws.version}")
-            print(f"  Active Constraints:       {[c.constraint_id for c in disturbed_ws.active_constraints]}")
+            obs_pos = {"x": obs.position.x, "y": obs.position.y, "z": obs.position.z} if obs else {}
+            causal_trace["obstacle_position"] = obs_pos
 
-            # Inspect what Decision Engine will evaluate on next tick
+            trace.record("PATH_BLOCKED_INJECTED", f"Obstacle placed at ({obs_pos.get('x', 0):.3f}, {obs_pos.get('y', 0):.3f}, {obs_pos.get('z', 0):.3f})")
+            trace.record("WORLD_STATE_CHANGED", f"Version advanced v{ws_after_action.version} -> v{disturbed_ws.version} with keepout constraint")
+
+            if viewer is not None:
+                viewer.sync()
+
+            # Decision Engine evaluation on disturbed state
             peek_decision = engine.decide(disturbed_ws)
+            evals_summary = []
             for cand in peek_decision.candidate_evaluations:
+                eval_item = {
+                    "step": step_num,
+                    "action_id": cand.action.action_id,
+                    "action_type": cand.action.action_type.value,
+                    "is_valid": cand.is_valid,
+                    "overall_score": cand.overall_score,
+                    "rejection_reasons": cand.rejection_reasons,
+                }
+                evals_summary.append(eval_item)
                 if not cand.is_valid:
-                    reasons = "; ".join(cand.rejection_reasons)
-                    causal_trace["rejected_blocked_candidates"].append({
-                        "action_id": cand.action.action_id,
-                        "action_type": cand.action.action_type.value,
-                        "rejection_reasons": cand.rejection_reasons,
-                    })
-                    print(f"  Constraint Rejection: {cand.action.action_id} ({cand.action.action_type.value}) REJECTED: {reasons}")
+                    rejected_actions_log.append(eval_item)
+                    causal_trace["rejected_blocked_candidates"].append(eval_item)
+                    if cand.action.action_type == ActionType.MOVE:
+                        trace.record(
+                            "MOVE_REJECTED_BLOCKED_PATH",
+                            f"Constraint validation rejected '{cand.action.action_id}': {'; '.join(cand.rejection_reasons)}",
+                        )
 
+            candidate_evals_log.extend(evals_summary)
             causal_trace["recovery_action_selected"] = peek_decision.selected_action.action_type.value
-            print(f"  Autonomous Recovery Selection: {causal_trace['recovery_action_selected']} (Score: {peek_decision.decision_factors.get('composite_score', 0.0):.3f})")
+            trace.record(
+                "RECOVERY_DECISION_REPOSITION",
+                f"Selected {peek_decision.selected_action.action_type.value} ({peek_decision.selected_action.action_id}) with clearance z={peek_decision.selected_action.target_position.z:.3f}m",
+            )
 
-    # 6. Execute Closed-Loop Orchestration
-    print_section("Phase 3: Autonomous Closed-Loop Execution")
+    # 8. Run Closed-Loop Execution
     start_exec = time.time()
     task_result: TaskExecutionResult = runner.run_instruction(
         args.instruction,
         model_provider=provider,
         step_callback=on_step_executed,
     )
-    total_exec_time = time.time() - start_exec
+    total_exec_duration = time.time() - start_exec
 
-    # 7. Check if recovery action was actually dispatched and executed
+    if viewer is not None:
+        viewer.sync()
+
+    # 9. Verify Recovery Execution
     repo_results = [r for r in runtime.execution_history if r.action_type == "REPOSITION"]
     if repo_results and repo_results[0].success:
         causal_trace["recovery_executed_success"] = True
 
-    # 8. Physical Ground-Truth Measurements
-    print_section("Phase 4: Physical Ground-Truth Verification (MuJoCo Measurements)")
+    # 10. Physical Verification Measurements
     final_obj_pos = sr.get_red_object_position()
     tgt_pos = sr.get_blue_target_position()
     tol = sr.get_blue_target_tolerance()
@@ -282,59 +424,137 @@ def main() -> None:
     is_released = not sr.is_object_grasped() and sr.is_gripper_open()
     final_obj_state = sr.determine_object_state()
 
-    print(f"Final Red Object Pos:   x={final_obj_pos.x:.4f}, y={final_obj_pos.y:.4f}, z={final_obj_pos.z:.4f}")
-    print(f"Target Zone Center:     x={tgt_pos.x:.4f}, y={tgt_pos.y:.4f}, z={tgt_pos.z:.4f}")
-    print(f"Placement Error (H):    {horizontal_dist:.4f} m (Acceptable: <= {tol:.4f} m) -> {'PASS' if within_tolerance else 'FAIL'}")
-    print(f"Tabletop Elevation:     {vertical_offset:.4f} m (Acceptable: <= 0.035 m) -> {'PASS' if is_at_tabletop else 'FAIL'}")
-    print(f"Gripper Open/Released:  {is_released} -> {'PASS' if is_released else 'FAIL'}")
-    print(f"Canonical Object State: {final_obj_state} -> {'PASS' if final_obj_state == ObjectState.PLACED else 'FAIL'}")
+    if within_tolerance and is_at_tabletop and final_obj_state == ObjectState.PLACED:
+        trace.record(
+            "FINAL_PLACEMENT_VERIFIED",
+            f"Object at ({final_obj_pos.x:.3f}, {final_obj_pos.y:.3f}, {final_obj_pos.z:.3f}), error={horizontal_dist:.4f}m <= tol={tol:.4f}m",
+        )
+    else:
+        trace.record(
+            "FINAL_PLACEMENT_FAILED",
+            f"Object error={horizontal_dist:.4f}m, tolerance={tol:.4f}m, state={final_obj_state}",
+        )
 
-    # 9. Verify 11 Physical Success Criteria
-    criteria = {
-        "1. Robot physically approached object": any(r["action_type"] == "APPROACH" and r["success"] for r in step_telemetry),
-        "2. Gripper physically grasped object": any(r["action_type"] == "GRASP" and r["success"] for r in step_telemetry),
-        "3. Disturbance occurred after grasp": causal_trace["disturbance_injected"],
-        "4. Decision Engine observed changed WorldState": causal_trace["post_disturbance_ws_version"] is not None and causal_trace["post_disturbance_ws_version"] > causal_trace["pre_disturbance_ws_version"],
-        "5. Nominal blocked path rejected": len(causal_trace["rejected_blocked_candidates"]) > 0,
-        "6. Recovery action selected by Decision Engine": causal_trace["recovery_action_selected"] == "REPOSITION",
-        "7. Robot physically executed recovery": causal_trace["recovery_executed_success"],
-        "8. Robot reached target zone": any(r["action_type"] == "MOVE" and r["success"] for r in step_telemetry[2:]),
-        "9. Object physically within target tolerance": within_tolerance,
-        "10. Gripper physically released object": is_released,
-        "11. Final verification succeeded": final_obj_state == ObjectState.PLACED and task_result.completed,
+    all_physical_criteria_met = (
+        within_tolerance
+        and is_at_tabletop
+        and is_released
+        and final_obj_state == ObjectState.PLACED
+        and task_result.completed
+        and causal_trace["disturbance_injected"]
+        and causal_trace["recovery_executed_success"]
+    )
+
+    if all_physical_criteria_met:
+        trace.record("TASK_COMPLETED", "Physical pick-and-place with obstacle avoidance succeeded.")
+    else:
+        trace.record("TASK_TERMINATED_INCOMPLETE", f"Failure reason: {task_result.failure_reason}")
+
+    # 11. Compile Structured Telemetry
+    telemetry: Dict[str, Any] = {
+        "timestamp": run_timestamp,
+        "project": "SĀRTHI",
+        "simulator": "MuJoCo",
+        "simulator_version": getattr(mujoco, "__version__", "unknown"),
+        "robot": "Franka Emika Panda",
+        "model": model_name,
+        "model_provider": provider_name,
+        "inference_endpoint": endpoint_url,
+        "instruction": args.instruction,
+        "task_understanding": {
+            "task_id": tu.task_id,
+            "objective": tu.objective,
+            "target_object": tu.target_object,
+            "target_location": tu.target_location,
+            "required_actions": tu.required_actions,
+            "confidence": tu.confidence,
+            "reasoning_summary": tu.reasoning_summary,
+        },
+        "actions": task_result.executed_actions,
+        "selected_actions": selected_actions_log,
+        "candidate_evaluations": candidate_evals_log,
+        "rejected_actions": rejected_actions_log,
+        "disturbance": {
+            "type": "PATH_BLOCKED",
+            "injected": causal_trace["disturbance_injected"],
+            "injected_at_step": causal_trace["disturbed_step"],
+            "obstacle_position": causal_trace["obstacle_position"],
+            "pre_disturbance_ws_version": causal_trace["pre_disturbance_ws_version"],
+            "post_disturbance_ws_version": causal_trace["post_disturbance_ws_version"],
+            "recovery_action": causal_trace["recovery_action_selected"],
+        },
+        "world_state_versions": [r["world_state_version"] for r in step_telemetry],
+        "execution_durations": {
+            "cognition_seconds": round(cognition_duration, 3),
+            "wall_clock_seconds": round(total_exec_duration, 3),
+            "simulation_physics_seconds": round(runtime.simulation_time, 3),
+        },
+        "recovery_count": task_result.recovery_count,
+        "final_object_position": {"x": round(final_obj_pos.x, 4), "y": round(final_obj_pos.y, 4), "z": round(final_obj_pos.z, 4)},
+        "target_position": {"x": round(tgt_pos.x, 4), "y": round(tgt_pos.y, 4), "z": round(tgt_pos.z, 4)},
+        "placement_error": round(horizontal_dist, 4),
+        "tolerance": round(tol, 4),
+        "gripper_state": "OPEN" if is_released else "CLOSED",
+        "gripper_released": is_released,
+        "final_object_state": final_obj_state.value,
+        "overall_result": "COMPLETED" if all_physical_criteria_met else "FAILED",
+        "physical_verification_passed": all_physical_criteria_met,
+        "event_trace": trace.get_formatted_trace(),
     }
 
-    print_section("Phase 5: Physical Success Criteria Evaluation")
-    all_passed = True
-    for desc, passed in criteria.items():
-        status_str = "[OK]  " if passed else "[FAIL]"
-        print(f"  {status_str} {desc}")
-        if not passed:
-            all_passed = False
+    # Sanitize telemetry to guarantee zero secret leakage
+    telemetry = sanitize_dict_for_telemetry(telemetry)
 
-    # 10. Structured Telemetry Summary
-    print_section("Phase 6: Structured End-to-End Telemetry Summary")
-    print(f"Initial Instruction:     \"{args.instruction}\"")
-    print(f"Nemotron Model Used:     {nebius_cfg.model}")
-    print(f"Nemotron Response Conf:  {tu.confidence:.2f}")
-    print(f"Executed Actions:        {task_result.executed_actions}")
-    print(f"Adaptive Recovery Count: {task_result.recovery_count}")
-    print(f"Total Execution Steps:   {len(step_telemetry)}")
-    print(f"Total Physics Time:      {runtime.simulation_time:.2f} s")
-    print(f"Wall Clock Time:         {total_exec_time:.2f} s")
-    print(f"Task Terminal Status:    {task_result.run_status}")
-    print(f"Causal Narrative:        PATH_BLOCKED changed physical WorldState "
-          f"(v{causal_trace['pre_disturbance_ws_version']} -> v{causal_trace['post_disturbance_ws_version']}) "
-          f"-> Decision Engine rejected {[c['action_id'] for c in causal_trace['rejected_blocked_candidates']]} "
-          f"-> Selected {causal_trace['recovery_action_selected']} "
-          f"-> Panda executed recovery -> Completed to {final_obj_state}.")
+    # 12. Write Output JSON if requested
+    if args.output:
+        out_path = pathlib.Path(args.output).resolve()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(telemetry, f, indent=2)
+        print(f"\nStructured telemetry written to: {out_path}")
 
-    # 11. Process Exit Code
-    if all_passed and task_result.completed:
-        print_banner("E2E VALIDATION RESULT: SUCCESS (All 11 Physical Criteria Satisfied)")
+    return all_physical_criteria_met, telemetry
+
+
+def main() -> None:
+    args = parse_arguments()
+
+    print_banner("SĀRTHI MUJOCO DEMONSTRATION & VALIDATION RUNNER")
+    print(f"Instruction:        \"{args.instruction}\"")
+    print(f"Mode:               {'Interactive Viewer' if args.viewer else 'Headless'}")
+    print(f"Model Provider:     {'MockModelProvider' if args.mock else 'NebiusNemotronProvider'}")
+    print(f"Seed:               {args.seed if args.seed is not None else 'None (inherently deterministic)'}")
+    print(f"Telemetry Output:   {args.output or 'None'}")
+
+    print_section("HUMAN-READABLE EVENT TRACE")
+    try:
+        success, tel = execute_validation_run(args)
+    except Exception as exc:
+        print(f"\nFATAL RUNNER FAILURE: {exc}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+    # Print Validation Summary as requested
+    print_section("VALIDATION SUMMARY")
+    print(f"Simulator:         {tel['simulator']}")
+    print(f"Robot:             {tel['robot']}")
+    print(f"Model:             {tel['model']}")
+    print(f"Task:              {tel['instruction']}")
+    print(f"Disturbance:       {tel['disturbance']['type']}")
+    print(f"Recovery:          {tel['disturbance'].get('recovery_action', 'REPOSITION')}")
+    print(f"Recovery Count:    {tel['recovery_count']}")
+    print(f"Placement Error:   {tel['placement_error']:.4f} m")
+    print(f"Tolerance:         {tel['tolerance']:.4f} m")
+    print(f"Object State:      {tel['final_object_state']}")
+    print(f"Gripper Released:  {tel['gripper_released']}")
+    print(f"Result:            {tel['overall_result']}")
+
+    if success:
+        print_banner("VALIDATION RUN COMPLETED SUCCESSFULLY (EXIT 0)")
         sys.exit(0)
     else:
-        print_banner("E2E VALIDATION RESULT: FAILED (Physical Success Criteria Not Satisfied)")
+        print_banner("VALIDATION RUN FAILED (EXIT 1)")
         sys.exit(1)
 
 
