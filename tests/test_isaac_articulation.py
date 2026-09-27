@@ -704,3 +704,93 @@ class TestIsaacArticulation(unittest.TestCase):
             self.assertEqual(final_ws.objects[0].state, ObjectState.PLACED)
             is_done, failure_reason = self.scenario.check_success_conditions(final_ws)
             self.assertTrue(is_done, f"Scenario success criteria failed: {failure_reason}")
+
+    # 20. Configurable physics stepping in execute_action
+    def test_20_runtime_physics_stepping_configuration_and_execution(self):
+        """Verify physics_steps_per_action is configurable and advances simulation ticks during execute_action."""
+        runtime = SarthiIsaacRuntime(scenario=self.scenario, physics_steps_per_action=45)
+        self.assertEqual(runtime.physics_steps_per_action, 45)
+
+        mock_robot = MagicMock()
+        mock_robot.get_joint_positions.return_value = [0.0] * 7
+        mock_robot.get_joint_velocities.return_value = [0.0] * 7
+        mock_ee = MagicMock()
+        mock_ee.get_world_pose.return_value = ([0.0, 0.0, 0.20], [1.0, 0.0, 0.0, 0.0])
+        mock_robot.end_effector = mock_ee
+        runtime.articulation_controller.bind_robot(mock_robot)
+
+        mock_world = MagicMock()
+        runtime._world = mock_world
+
+        with patch("simulation.isaac_runtime.runtime.is_isaac_sim_available", return_value=True):
+            runtime._is_initialized = True
+
+            act = CandidateAction(
+                action_type=ActionType.APPROACH,
+                action_id="act_step_test",
+                target_position=Point3D(x=0.25, y=0.15, z=0.20),
+            )
+            # Execute with default configured steps (45 ticks)
+            res = runtime.execute_action(act)
+            self.assertTrue(res.success)
+            self.assertEqual(mock_world.step.call_count, 45)
+            self.assertAlmostEqual(runtime._simulation_time, 45 * (1.0 / 60.0), places=4)
+
+            # Execute with explicit override (10 ticks)
+            mock_world.step.reset_mock()
+            res2 = runtime.execute_action(act, physics_steps=10)
+            self.assertTrue(res2.success)
+            self.assertEqual(mock_world.step.call_count, 10)
+
+    # 21. Articulation controller Cartesian forwarding to robot controller
+    def test_21_articulation_controller_cartesian_forwarding_to_robot(self):
+        """Verify command_cartesian_position forwards target coordinates to robot controller prim."""
+        controller = SarthiArticulationController()
+        mock_robot = MagicMock()
+        mock_ctrl = MagicMock()
+        mock_robot.controller = mock_ctrl
+        controller.bind_robot(mock_robot)
+
+        controller.command_cartesian_position(Point3D(x=0.25, y=0.15, z=0.20))
+        mock_ctrl.forward.assert_called_once_with(target_position=[0.25, 0.15, 0.20])
+        mock_robot.apply_action.assert_called_once()
+
+    # 22. SarthiTaskRunner + IsaacSimAdapter APPROACH milestone
+    def test_22_task_runner_isaac_sim_adapter_approach_milestone(self):
+        """Verify SarthiTaskRunner with IsaacSimAdapter executes APPROACH and stops after step 1 when max_steps=1."""
+        from backend.app.model.mock_provider import MockModelProvider
+        from backend.app.orchestration.task_runner import SarthiTaskRunner
+
+        runtime = SarthiIsaacRuntime(scenario=self.scenario)
+        mock_robot = MagicMock()
+        mock_robot.get_joint_positions.return_value = [0.0] * 7
+        mock_robot.get_joint_velocities.return_value = [0.0] * 7
+        mock_ee = MagicMock()
+        target_pos = self.scenario.red_object.initial_pose
+        # Initial robot pose is origin
+        mock_ee.get_world_pose.return_value = ([0.0, 0.0, 0.20], [1.0, 0.0, 0.0, 0.0])
+        mock_robot.end_effector = mock_ee
+        runtime.articulation_controller.bind_robot(mock_robot)
+
+        with patch("simulation.isaac_runtime.runtime.is_isaac_sim_available", return_value=True):
+            runtime._is_initialized = True
+            adapter = IsaacSimAdapter(sim_backend=runtime)
+
+            runner = SarthiTaskRunner(adapter=adapter, max_steps=1)
+
+            # When execute_action is called for APPROACH, update mock_ee to target_pos so verification passes
+            def on_approach(act):
+                mock_ee.get_world_pose.return_value = ([target_pos.x, target_pos.y, target_pos.z], [1.0, 0.0, 0.0, 0.0])
+            mock_robot.apply_action.side_effect = on_approach
+
+            result = runner.run_instruction(
+                instruction="Move the red object to the blue target.",
+                model_provider=MockModelProvider(),
+            )
+
+            # Verify exactly 1 step executed (APPROACH) and cleanly stopped
+            self.assertEqual(result.executed_actions, [ActionType.APPROACH.value])
+            self.assertEqual(len(result.verification_results), 1)
+            self.assertTrue(result.verification_results[0].verified)
+            self.assertEqual(result.run_status, "MAX_STEPS_REACHED")
+            self.assertFalse(result.completed)  # Milestone stops after Step 1 without running full task

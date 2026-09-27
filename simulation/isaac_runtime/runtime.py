@@ -74,6 +74,7 @@ class SarthiIsaacRuntime:
         self,
         scenario: Optional[TabletopPickPlaceScenario] = None,
         robot_config: Optional[RobotSceneConfig] = None,
+        physics_steps_per_action: int = 60,
     ):
         self.scenario = scenario or create_default_scenario()
         self.robot_config = robot_config or RobotSceneConfig(
@@ -90,6 +91,7 @@ class SarthiIsaacRuntime:
             usd_prim_path=self.robot_config.usd_prim_path,
         )
 
+        self.physics_steps_per_action = physics_steps_per_action
         self._simulation_app: Optional[Any] = None
         self._world: Optional[Any] = None
         self._is_initialized: bool = False
@@ -392,6 +394,7 @@ class SarthiIsaacRuntime:
     def execute_action(
         self,
         action: Union[CandidateAction, IsaacSimAction, Dict[str, Any]],
+        physics_steps: Optional[int] = None,
     ) -> ActionExecutionResult:
         """
         Dispatches action primitive to Isaac Sim articulation controller.
@@ -409,6 +412,14 @@ class SarthiIsaacRuntime:
             sim_time=self._simulation_time,
             world_version=prev_version,
         )
+
+        # Advance simulation physics to allow articulation convergence
+        if result.success and self._world is not None:
+            ticks = physics_steps if physics_steps is not None else self.physics_steps_per_action
+            if ticks > 0:
+                for _ in range(ticks):
+                    self.step(render=False)
+            result.simulation_time = self._simulation_time
 
         act_type_enum = None
         if hasattr(action, "action_type"):

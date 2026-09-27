@@ -1,4 +1,4 @@
-﻿"""
+"""
 SĀRTHI Orchestration — Task Runner Coordinator.
 Executes autonomous task workflows across Decision Engine and Simulation Adapter interfaces.
 Never directly controls or commands robot motors.
@@ -19,6 +19,7 @@ from backend.app.decision_engine.engine import SarthiDecisionEngine
 from backend.app.decision_engine.models import ActionType, WorldState
 from backend.app.model.mock_provider import MockModelProvider
 from backend.app.model.models import TaskUnderstanding
+from backend.app.model.nebius_provider import NebiusNemotronProvider
 from backend.app.model.provider import ModelProvider
 from backend.app.model.task_understanding import TaskUnderstandingService
 from backend.app.orchestration.execution_result import TaskExecutionResult, VerificationSummary
@@ -228,7 +229,7 @@ class SarthiTaskRunner:
               v
             TaskExecutionResult       (serializable, complete audit)
         """
-        provider = model_provider or MockModelProvider()
+        provider = model_provider or NebiusNemotronProvider()
         service = TaskUnderstandingService(provider)
         interpreter = TaskInterpreter(service)
 

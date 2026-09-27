@@ -537,6 +537,25 @@ class TestNebiusNemotronIntegration(unittest.TestCase):
         self.assertEqual(len(result.executed_actions), 4)
         mock_client.chat.completions.create.assert_called_once()
 
+    def test_default_model_provider_is_nebius_provider(self):
+        """
+        Verify SarthiTaskRunner defaults to NebiusNemotronProvider when no model_provider is provided.
+        Ensures NO live API call occurs by patching the provider class.
+        """
+        world, adapter = _make_standard_world()
+        runner = SarthiTaskRunner(adapter=adapter)
+
+        class _MockNebiusProvider(ModelProvider):
+            def understand_task(self, instruction, world_context=None):
+                return TaskUnderstanding.model_validate(CANONICAL_VALID_PAYLOAD)
+
+        with patch("backend.app.orchestration.task_runner.NebiusNemotronProvider") as mock_prov_cls:
+            mock_prov_cls.return_value = _MockNebiusProvider()
+
+            result = runner.run_instruction("Move the red object to the blue target.")
+            mock_prov_cls.assert_called_once()
+            self.assertTrue(result.completed)
+
 
 if __name__ == "__main__":
     unittest.main()

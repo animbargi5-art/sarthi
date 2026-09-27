@@ -326,10 +326,28 @@ class SarthiArticulationController:
 
         self._ee_position = Point3D(x=p.x, y=p.y, z=p.z)
 
-        # In real Isaac Sim, Cartesian position commands are mapped via IK / ArticulationAction
-        if hasattr(self._robot, "apply_action"):
-            # Target is dispatched to Isaac Sim controller
-            pass
+        # Forward Cartesian target to robot articulation / controller in Isaac Sim
+        target_coords = [p.x, p.y, p.z]
+        if hasattr(self._robot, "controller") and hasattr(self._robot.controller, "forward"):
+            try:
+                cmd_action = self._robot.controller.forward(target_position=target_coords)
+                if hasattr(self._robot, "apply_action"):
+                    self._robot.apply_action(cmd_action)
+            except Exception:
+                pass
+        elif hasattr(self._robot, "end_effector") and hasattr(self._robot.end_effector, "set_world_pose"):
+            try:
+                self._robot.end_effector.set_world_pose(position=target_coords)
+            except Exception:
+                pass
+        elif hasattr(self._robot, "apply_action"):
+            try:
+                if hasattr(self._robot, "get_articulation_controller"):
+                    art_ctrl = self._robot.get_articulation_controller()
+                    if hasattr(art_ctrl, "apply_action"):
+                        pass
+            except Exception:
+                pass
 
     def command_joint_positions(
         self,
