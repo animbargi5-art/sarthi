@@ -1,78 +1,197 @@
 # SĀRTHI
 
-> **An adaptive Physical AI architecture for context-aware, responsibility-driven robotic decision-making under changing physical conditions.**
+> **SĀRTHI is an adaptive Physical AI architecture for context-aware, responsibility-driven robotic decision-making under changing physical conditions.**
 
 Developed for the **Nebius × NVIDIA Global AI Hackathon 2026**.
 
 ---
 
-## Overview
+## Problem Statement
 
-Modern robotic control systems struggle when physical reality deviates from idealized models. Unexpected slips, sudden payload mass shifts, friction variations, and external dynamic obstacles often cause hard failures or catastrophic stalls in conventional open-loop planners.
+Robotic systems can encounter unexpected physical changes after an action plan has already been selected. Conventional open-loop planners and static execution pipelines fail when environmental dynamics diverge from initial assumptions—such as an obstacle suddenly blocking a transit path, an object shifting in grasp, or clearance bounds changing mid-task.
 
-**SĀRTHI** is an adaptive Physical AI architecture designed to close the gap between high-level cognitive reasoning and low-level deterministic robotic control. By integrating high-throughput cloud inference with high-fidelity physics simulation, SĀRTHI continuously evaluates physical contact dynamics, predicts operational risks, and executes autonomous recovery behaviors under dynamic environmental disturbances.
-
----
-
-## Core Pillars & Key Technologies
-
-### 1. High-Reasoning Cognitive Engine: NVIDIA Nemotron
-SĀRTHI utilizes **NVIDIA Nemotron** as its core cognitive reasoner. When low-level controllers detect physical state violations, Nemotron analyzes structured sensor observations, operational constraints, and failure symptoms to formulate context-aware recovery tactics, alternative task decompositions, and responsibility-driven risk mitigations.
-
-### 2. High-Throughput Inference Infrastructure: Nebius Token Factory
-Robotic decision loops require predictable, ultra-low-latency language model inference. SĀRTHI leverages **Nebius Token Factory** to deploy and query NVIDIA Nemotron with enterprise-grade token generation speed, high concurrency, and low latency, enabling near real-time re-planning without compromising cognitive depth.
-
-### 3. High-Fidelity Physics Simulation: NVIDIA Isaac Sim
-All physical interactions, sensor streams, and dynamic disturbances are modeled inside **NVIDIA Isaac Sim**, powered by Omniverse and PhysX 5. Isaac Sim provides accurate contact dynamics, synthetic depth and RGB perception, IMU and force/torque feedback, and programmable disturbance injection to rigorously validate robotic behaviors.
-
-### 4. Adaptive Decision-Making
-Rather than relying on static decision trees, SĀRTHI executes **adaptive decision-making**:
-- Dynamically reassessing grasp quality, trajectory clearance, and force limits during movement.
-- Balancing task urgency against physical stability margins.
-- Transitioning smoothly between nominal execution, safety hold, cognitive re-planning, and recovery actions.
-
-### 5. Physical-World Disturbance and Recovery
-The central engineering objective of SĀRTHI is robust **physical-world disturbance and recovery**:
-- **Disturbance Ingestion:** Detects physical slips, sudden torque spikes, collisions, and path blockages in real time.
-- **Responsibility Classification:** Analyzes whether the disturbance warrants local compliance, a strategic re-grasp, trajectory detour, or a controlled safe halt.
-- **Closed-Loop Recovery:** Generates and executes corrective motion primitives within NVIDIA Isaac Sim, confirming state stability before resuming nominal objectives.
+SĀRTHI demonstrates a closed-loop approach in which the robot observes the updated world state, validates candidate actions against constraints, rejects unsafe or invalid actions, and selects a recovery action when the environment changes.
 
 ---
 
-## Architecture at a Glance
+## System Architecture
+
+SĀRTHI strictly decouples cognitive semantic parsing from deterministic physical execution authority:
+
+```text
+Human instruction
+        ↓
+Task Understanding — Nemotron via Nebius Token Factory
+        ↓
+World-state observation
+        ↓
+Deterministic Decision Engine
+        ↓
+Constraint validation
+        ↓
+Physical action execution
+        ↓
+Verification
+        ↓
+Reassessment / recovery
+        ↺
+```
+
+### Architectural Separation & Safety Invariant
 
 ```mermaid
 graph TD
-    subgraph IsaacSim ["NVIDIA Isaac Sim (Physics & Perception Tier)"]
-        Robot[Robotic Manipulator / Agent]
-        Sensors[Sensors: F/T, RGB-D, Joint Telemetry]
-        Disturbance[Disturbance Injection Engine]
-        Robot --> Sensors
-        Disturbance -.-> Robot
+    User["Human Operator Instruction"] --> TaskService["TaskUnderstandingService"]
+    
+    subgraph CognitiveTier ["Cognitive Layer (Cloud Inference)"]
+        TaskService --> NebiusProvider["Nebius Token Factory API"]
+        NebiusProvider --> NemotronModel["NVIDIA Nemotron-3-Ultra"]
+        NemotronModel --> SemanticPlan["Structured TaskUnderstanding (Pydantic)"]
     end
-
-    subgraph Runtime ["SĀRTHI Runtime (Backend Tier)"]
-        StreamAggregator[Telemetry Aggregator & Streamer]
-        AnomalyDetector[Disturbance & Anomaly Detector]
-        SafetyGuard[Deterministic Safety & Boundary Validator]
-        Controller[Action Dispatcher & Trajectory Controller]
-        
-        Sensors --> StreamAggregator
-        StreamAggregator --> AnomalyDetector
-        AnomalyDetector -->|Disturbance Trigger| CognitiveClient[Cognitive Dispatcher]
-        SafetyGuard --> Controller
-        Controller --> Robot
+    
+    subgraph DecisionTier ["Deterministic Decision Engine (Sole Action Authority)"]
+        SemanticPlan --> TaskRunner["SarthiTaskRunner"]
+        WorldObs["Physical WorldState Observation"] --> DecisionEngine["SarthiDecisionEngine"]
+        TaskRunner --> DecisionEngine
+        DecisionEngine --> ConstraintCheck{"Constraint Validation (Clearance, Bounds, Stability)"}
+        ConstraintCheck -- "Violation (e.g. PATH_BLOCKED)" --> Reject["Reject Action & Select REPOSITION"]
+        ConstraintCheck -- "Valid" --> Execute["Approve Validated Action"]
     end
-
-    subgraph NebiusCloud ["Nebius Cloud (Cognitive Tier)"]
-        TokenFactory[Nebius Token Factory]
-        Nemotron[NVIDIA Nemotron Reasoning Model]
-        
-        CognitiveClient --> TokenFactory
-        TokenFactory --> Nemotron
-        Nemotron -->|Structured Recovery Strategy| SafetyGuard
+    
+    subgraph ExecutionTier ["Physical Execution & Verification (MuJoCo)"]
+        Execute --> Articulation["SarthiMuJoCoArticulation (DLS IK & Control)"]
+        Reject --> Articulation
+        Articulation --> FrankaArm["Franka Emika Panda Robot (7-DOF + Gripper)"]
+        FrankaArm --> Physics["MuJoCo Physics Engine"]
+        Physics --> StateReader["SarthiMuJoCoStateReader"]
+        StateReader --> WorldObs
     end
 ```
+
+> [!IMPORTANT]
+> **Core Architectural Invariant:**
+> - **NVIDIA Nemotron** performs natural-language task understanding (extracting high-level targets, intended goals, and semantic actions).
+> - The **deterministic Decision Engine** remains the sole physical action authority, evaluating physical kinematics, clearance constraints, and candidate action ranking.
+> - Nemotron does **NOT** directly command robot motors or output raw joint trajectories.
+
+---
+
+## Technology Stack
+
+- **Language & Runtime:** Python 3.10+ (asyncio, type annotations)
+- **Cognitive Foundation Model:** NVIDIA Nemotron (`nvidia/Nemotron-3-Ultra-550b-a55b`)
+- **Cloud Inference Platform:** Nebius Token Factory (high-throughput OpenAI-compatible endpoint)
+- **Physics Simulation Engine:** MuJoCo (`mujoco >= 3.1.0`)
+- **Robot Manipulator:** Franka Emika Panda (7-DOF arm with parallel-jaw gripper, sourced from MuJoCo Menagerie)
+- **Data Contracts & Schemas:** Pydantic v2 (type-safe, validated telemetry and task interfaces)
+- **Deterministic Action Authority:** SĀRTHI Decision Engine (constraint validation, collision avoidance, and autonomous recovery selection)
+
+---
+
+## Live Model Integration: Nebius Token Factory & NVIDIA Nemotron
+
+SĀRTHI integrates with **Nebius Token Factory** for low-latency foundation model inference.
+
+- **Model Identifier:** `nvidia/Nemotron-3-Ultra-550b-a55b`
+- **Inference Endpoint:** `https://api.tokenfactory.nebius.com/v1`
+- **Role:** Extracts semantic intent (`TaskUnderstanding`) from unstructured human language (e.g., resolving target object identity, destination zone, and task sequence).
+- **Security & Configuration:** API credentials are authenticated strictly via environment variables (`NEBIUS_API_KEY`, `NEBIUS_BASE_URL`, `NEBIUS_MODEL`). No credentials or secret keys are stored in the codebase or version control.
+- For complete provider setup and integration details, see [docs/NEBIUS_TOKEN_FACTORY.md](docs/NEBIUS_TOKEN_FACTORY.md).
+
+---
+
+## Implemented & Validated Benchmark
+
+The complete closed-loop pipeline has been verified through an embodied pick-and-place manipulation task under dynamic physical disturbance:
+
+### Task
+`"Move the red object to the blue target."`
+
+### Simulation Environment
+MuJoCo physics with a 7-DOF Franka Emika Panda arm, a red manipulateable object ($0.04 \times 0.04 \times 0.04\text{ m}$ cube), a blue destination zone, and a dynamic obstacle ($0.08 \times 0.08 \times 0.16\text{ m}$ column).
+
+### Dynamic Disturbance
+A physical blocking obstacle is introduced along the direct transit trajectory after the robot has completed the `GRASP` phase and before the planned `MOVE`.
+
+### Observed Autonomous Recovery Flow
+1. **Initial Execution:** Robot executes `APPROACH` and `GRASP`, establishing firm physical contact with the red object.
+2. **Disturbance Detection:** The obstacle activates in the transit corridor (`PATH_BLOCKED`).
+3. **Constraint Enforcement:** Candidate `MOVE` action evaluated against active world state.
+   - Minimum trajectory clearance to obstacle: **`0.066 m`**
+   - Required safety clearance: **`0.082 m`**
+   - Action rejected by the Decision Engine due to constraint violation.
+4. **Autonomous Re-planning:** SĀRTHI Decision Engine evaluates alternatives and selects `REPOSITION`.
+5. **Recovery Execution:** Robot lifts and repositions the grasped object above the obstacle (elevation $z \approx 0.333\text{–}0.351\text{ m}$), safely clearing the collision manifold.
+6. **Delivery & Placement:** Robot executes the cleared `MOVE` trajectory to the target destination zone.
+7. **Release & Settle:** `RELEASE` executed; object settles under gravity on the target zone.
+8. **Final Verification Metrics:**
+   - **Recovery count:** `1`
+   - **Final placement error:** **`0.0535 m`**
+   - **Allowed placement tolerance:** **`0.0600 m`**
+   - **Task Outcome:** Successfully Completed (`Status: COMPLETED`)
+
+Detailed validation logs, contact telemetry, and IK convergence analyses are documented in [docs/MUJOCO_VALIDATION.md](docs/MUJOCO_VALIDATION.md).
+
+---
+
+## Automated Test Suite
+
+SĀRTHI is validated by an automated unit and integration test suite:
+
+```text
+Ran 186 tests in 10.952s
+
+OK (186 passed, 0 failed, 0 errors)
+```
+
+The test suite validates:
+- Damped-Least-Squares (DLS) inverse kinematics and joint limit clipping
+- Deterministic constraint checking and collision boundary projection
+- Live MuJoCo state extraction into canonical Pydantic schemas
+- Runtime action dispatch, physical verification, and dynamic recovery loops
+- Nebius Token Factory provider integration (both live and offline mocked modes)
+
+---
+
+## Running the Validated Demo
+
+All validation commands use already implemented scripts and configurations:
+
+### 1. Live Nemotron + MuJoCo Headless
+Runs the full closed-loop recovery with live Nebius Token Factory inference:
+```powershell
+.venv\Scripts\python.exe scripts\mujoco\run_sarthi_mujoco_e2e.py --headless --output records\mujoco_e2e_telemetry.json
+```
+
+### 2. Offline / Mock Validation
+Runs the identical closed-loop physics simulation and disturbance recovery using the deterministic offline mock provider (no API key required):
+```powershell
+.venv\Scripts\python.exe scripts\mujoco\run_sarthi_mujoco_e2e.py --mock --output records\offline_telemetry.json
+```
+
+### 3. Interactive MuJoCo 3D Viewer
+Launches the interactive MuJoCo graphical window to visually inspect the Franka Panda arm, obstacle disturbance, and recovery trajectory:
+```powershell
+.venv\Scripts\python.exe scripts\mujoco\run_sarthi_mujoco_e2e.py --viewer
+```
+
+### 4. Full Automated Test Suite
+Executes all 186 unit and integration tests across the repository:
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+```
+
+Structured telemetry and execution records are persisted under [`records/`](records/).
+
+---
+
+## Current Scope and Limitations
+
+To maintain rigorous technical transparency, the current operational scope and validated boundaries are:
+- **Tabletop Manipulation:** Currently validated on a tabletop pick-and-place manipulation scenario.
+- **Disturbance Profile:** Currently validated on dynamic transit path blockage (`PATH_BLOCKED`).
+- **Simulation Validation:** Validated in high-fidelity rigid-body physics simulation (MuJoCo). Direct physical hardware validation has not yet been performed.
+- **Future Scope:** Expanding to dynamic multi-obstacle avoidance, deformable object manipulation, slippage compensation under variable friction, and real-world Franka Panda hardware deployment.
 
 ---
 
@@ -80,60 +199,32 @@ graph TD
 
 ```text
 sarthi/
-├── LICENSE                 # MIT License
-├── README.md               # Project overview & architectural vision
-├── FEEDBACK.md             # Feedback capture, review notes & evaluation rubric
-├── .gitignore              # Production gitignore for Python, Isaac Sim & Node
-├── ARCHITECTURE.md         # Deep-dive system architecture specification
-├── PRD.md                  # Product Requirements Document
-├── TRD.md                  # Technical Requirements Document
-├── APP_FLOW.md             # End-to-end execution flow & sequence diagrams
-├── UI_UX.md                # Operator dashboard & telemetry console specifications
-├── BACKEND_SCHEMA.md       # Pydantic & JSON data contracts and interfaces
-├── IMPLEMENTATION_PLAN.md   # Phased engineering roadmap
-├── backend/                # FastAPI backend & orchestration service
-│   └── app/                # Core application package
-├── frontend/               # Operator dashboard & telemetry visualizer
-├── simulation/             # NVIDIA Isaac Sim assets, environments & configs
-├── configs/                # System, model, and simulation configurations
-├── scripts/                # Utility scripts & verification tooling
-├── tests/                  # Unit, integration, and recovery benchmarks
-└── docs/                   # Extended design documentation & specifications
+├── LICENSE                             # MIT License
+├── README.md                           # Project overview, architecture & validation guide
+├── FEEDBACK.md                         # Technical evaluation notes & validation evidence
+├── backend/                            # Core SĀRTHI orchestration & decision engine
+│   └── app/
+│       ├── decision/                   # Deterministic SĀRTHI Decision Engine & constraints
+│       ├── model/                      # Canonical Pydantic schemas (WorldState, Actions)
+│       ├── orchestration/              # SarthiTaskRunner & TaskUnderstandingService
+│       └── providers/                  # Nebius Token Factory / Nemotron provider
+├── simulation/
+│   ├── mujoco_assets/                  # SĀRTHI MuJoCo scene XMLs & Franka Panda MJCF
+│   └── mujoco_runtime/                 # Runtime execution, IK articulation & state reader
+├── records/                            # Structured JSON execution telemetry & run records
+├── docs/
+│   ├── MUJOCO_VALIDATION.md            # MuJoCo physics validation & telemetry guide
+│   ├── NEBIUS_TOKEN_FACTORY.md         # Nebius Token Factory integration guide
+│   └── ARCHITECTURE.md                 # Deep-dive system architecture specification
+├── scripts/
+│   └── mujoco/                         # E2E demo runner (headless, viewer, mock)
+├── tests/                              # 186 unit, integration, and E2E recovery tests
+└── configs/                            # Simulation and provider configurations
 ```
-
----
-
-## Prerequisites & Target Environment
-
-- **Inference:** Nebius Token Factory API access (API Key & endpoint for NVIDIA Nemotron).
-- **Simulation:** NVIDIA Isaac Sim 4.0+ (requires NVIDIA RTX GPU with CUDA 12.x support).
-- **Backend:** Python 3.10+ with asyncio and FastAPI.
-- **Operating System:** Ubuntu 22.04 LTS / Windows 11 with WSL2 / Native Windows for Python orchestration.
-
----
-
----
-
-## MuJoCo Physical AI Validation
-
-SĀRTHI includes a MuJoCo-based physical simulation backend used to validate:
-- **Embodied Decision-Making**: Translating cognitive goals into verifiable physical action sequences.
-- **Physical Action Execution**: Inverse kinematics and joint control of a 7-DOF Franka Emika Panda arm.
-- **Disturbance Handling**: Injecting dynamic physical obstacles (`PATH_BLOCKED`) post-grasp.
-- **Adaptive Recovery**: Autonomous rejection of collision paths and deterministic selection of recovery behaviors.
-- **State Verification**: Continuous physical evidence extraction from simulation contacts and coordinates.
-
-### Technology Stack & Roles
-- **NVIDIA Nemotron**: Operates in the cognitive layer to parse human natural-language instructions into structured task semantics (`TaskUnderstanding`).
-- **Nebius Token Factory**: Provides high-throughput, low-latency cloud inference hosting for NVIDIA Nemotron.
-- **MuJoCo**: Provides the deterministic physics engine modeling rigid-body dynamics, contact mechanics, and collision manifolds.
-- **SĀRTHI Decision Engine**: Serves as the sole deterministic physical-action authority, evaluating constraints and ranking candidate actions.
-
-For complete execution instructions and telemetry schemas, see [docs/MUJOCO_VALIDATION.md](file:///d:/Projects/SĀRTHI/docs/MUJOCO_VALIDATION.md).
 
 ---
 
 ## License & Third-Party Attribution
 
-- **SĀRTHI Core**: Licensed under the MIT License - see the [LICENSE](file:///d:/Projects/SĀRTHI/LICENSE) file for details.
-- **Franka Emika Panda MJCF Model**: Sourced from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie/tree/main/franka_emika_panda) (Google DeepMind / Franka Emika GmbH), licensed under Apache 2.0. Upstream model files remain unmodified and are included in scenario compositions.
+- **SĀRTHI Core:** Released under the [MIT License](LICENSE).
+- **Franka Emika Panda MJCF Model:** Sourced from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie/tree/main/franka_emika_panda) (Google DeepMind / Franka Emika GmbH), licensed under Apache 2.0. Upstream model definitions remain unmodified.
