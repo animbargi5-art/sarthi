@@ -46,12 +46,14 @@ The live validation demonstrated:
 
 ## Test Validation
 
-Final automated test suite:
+Final automated test suite (V3-12 submission freeze):
 
-- Tests: `186`
-- Passed: `186`
+- Tests: `366`
+- Passed: `366`
 - Failed: `0`
 - Errors: `0`
+- Unsafe robot executions: `0`
+- AI-to-robot direct bypasses: `0`
 
 ## Nebius Token Factory Feedback
 

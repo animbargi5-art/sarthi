@@ -13,6 +13,7 @@ Strict Architectural Guarantees:
 """
 
 import math
+import time
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -222,17 +223,48 @@ class SarthiMuJoCoRuntime(SimulationAdapter):
         failure_reason = None
         action_success = False
 
+        t_ik_ms = 0.0
+        t_sim_ms = 0.0
+        t_verify_ms = 0.0
+
+        def _timed_solve_ik(pos):
+            nonlocal t_ik_ms
+            _t0 = time.perf_counter()
+            _res = self._articulation.solve_ik(pos)
+            t_ik_ms += (time.perf_counter() - _t0) * 1000.0
+            return _res
+
+        def _timed_step_traj(target_q, target_pos, steps):
+            nonlocal t_sim_ms
+            _t0 = time.perf_counter()
+            _ticks = self._step_joint_trajectory(target_q, target_pos, steps=steps)
+            t_sim_ms += (time.perf_counter() - _t0) * 1000.0
+            return _ticks
+
+        def _timed_step(steps):
+            nonlocal t_sim_ms
+            _t0 = time.perf_counter()
+            self._articulation.step(steps)
+            t_sim_ms += (time.perf_counter() - _t0) * 1000.0
+
+        def _timed_verify(act, exp=None):
+            nonlocal t_verify_ms
+            _t0 = time.perf_counter()
+            _res = self._verifier.verify(act, exp)
+            t_verify_ms += (time.perf_counter() - _t0) * 1000.0
+            return _res
+
         # --- STOP ---
         if action_type == ActionType.STOP:
             self._articulation.stop()
-            self._articulation.step(25)
+            _timed_step(25)
             ticks_executed = 25
-            action_success, failure_reason = self._verifier.verify(action)
+            action_success, failure_reason = _timed_verify(action)
 
         # --- APPROACH ---
         elif action_type == ActionType.APPROACH:
             self._articulation.open_gripper()
-            self._articulation.step(30)
+            _timed_step(30)
             ticks_executed += 30
 
             if target_pos:
@@ -244,18 +276,18 @@ class SarthiMuJoCoRuntime(SimulationAdapter):
                 else:
                     standoff_pos = Point3D(x=float(target_pos[0]), y=float(target_pos[1]), z=float(target_pos[2]) + 0.08)
 
-                st_conv, st_q, _ = self._articulation.solve_ik(standoff_pos)
+                st_conv, st_q, _ = _timed_solve_ik(standoff_pos)
                 if st_conv:
-                    ticks_executed += self._step_joint_trajectory(st_q, standoff_pos, steps=100)
+                    ticks_executed += _timed_step_traj(st_q, standoff_pos, steps=100)
 
-                converged, q_sol, dist = self._articulation.solve_ik(target_pos)
+                converged, q_sol, dist = _timed_solve_ik(target_pos)
                 if not converged:
                     failure_reason = f"IK failed to converge for APPROACH target. Dist: {dist:.4f}m"
                 else:
-                    ticks_executed += self._step_joint_trajectory(q_sol, target_pos, steps=250)
+                    ticks_executed += _timed_step_traj(q_sol, target_pos, steps=250)
 
             if failure_reason is None:
-                action_success, failure_reason = self._verifier.verify(action)
+                action_success, failure_reason = _timed_verify(action)
             else:
                 action_success = False
 
@@ -267,14 +299,14 @@ class SarthiMuJoCoRuntime(SimulationAdapter):
                 self._articulation.hold_gripper()
 
             if target_pos:
-                converged, q_sol, dist = self._articulation.solve_ik(target_pos)
+                converged, q_sol, dist = _timed_solve_ik(target_pos)
                 if not converged:
                     failure_reason = f"IK failed to converge for REPOSITION target. Dist: {dist:.4f}m"
                 else:
-                    ticks_executed += self._step_joint_trajectory(q_sol, target_pos, steps=self._steps_per_action)
+                    ticks_executed += _timed_step_traj(q_sol, target_pos, steps=self._steps_per_action)
 
             if failure_reason is None:
-                action_success, failure_reason = self._verifier.verify(action)
+                action_success, failure_reason = _timed_verify(action)
             else:
                 action_success = False
 
@@ -289,18 +321,18 @@ class SarthiMuJoCoRuntime(SimulationAdapter):
 
                 if curr_ee.z > tgt_z + 0.05 and self._state_reader.is_object_grasped():
                     high_tgt = Point3D(x=tgt_x, y=tgt_y, z=curr_ee.z)
-                    h_conv, h_q, _ = self._articulation.solve_ik(high_tgt)
+                    h_conv, h_q, _ = _timed_solve_ik(high_tgt)
                     if h_conv:
-                        ticks_executed += self._step_joint_trajectory(h_q, high_tgt, steps=300)
+                        ticks_executed += _timed_step_traj(h_q, high_tgt, steps=300)
 
-                converged, q_sol, dist = self._articulation.solve_ik(target_pos)
+                converged, q_sol, dist = _timed_solve_ik(target_pos)
                 if not converged:
                     failure_reason = f"IK failed to converge for MOVE target. Dist: {dist:.4f}m"
                 else:
-                    ticks_executed += self._step_joint_trajectory(q_sol, target_pos, steps=self._steps_per_action)
+                    ticks_executed += _timed_step_traj(q_sol, target_pos, steps=self._steps_per_action)
 
             if failure_reason is None:
-                action_success, failure_reason = self._verifier.verify(action)
+                action_success, failure_reason = _timed_verify(action)
             else:
                 action_success = False
 
@@ -310,21 +342,21 @@ class SarthiMuJoCoRuntime(SimulationAdapter):
                 failure_reason = "Missing target_object_id for GRASP."
             else:
                 if target_pos:
-                    conv_g, q_g, _ = self._articulation.solve_ik(target_pos)
+                    conv_g, q_g, _ = _timed_solve_ik(target_pos)
                     if conv_g:
-                        ticks_executed += self._step_joint_trajectory(q_g, target_pos, steps=150)
+                        ticks_executed += _timed_step_traj(q_g, target_pos, steps=150)
                 self._articulation.close_gripper()
                 # Step physics to allow gripper fingers to physically close on object
-                self._articulation.step(self._steps_per_action)
+                _timed_step(self._steps_per_action)
                 ticks_executed += self._steps_per_action
-                action_success, failure_reason = self._verifier.verify(action)
+                action_success, failure_reason = _timed_verify(action)
 
         # --- RELEASE ---
         elif action_type == ActionType.RELEASE:
             self._articulation.open_gripper()
-            self._articulation.step(self._steps_per_action)
+            _timed_step(self._steps_per_action)
             ticks_executed = self._steps_per_action
-            action_success, failure_reason = self._verifier.verify(action)
+            action_success, failure_reason = _timed_verify(action)
 
         else:
             failure_reason = f"Unsupported action type: {action_type}"
@@ -348,6 +380,9 @@ class SarthiMuJoCoRuntime(SimulationAdapter):
             "physics_ticks": ticks_executed,
             "target_position": target_pos,
             "verified": action_success,
+            "tau_ik_ms": round(t_ik_ms, 3),
+            "tau_sim_ms": round(t_sim_ms, 3),
+            "tau_verify_ms": round(t_verify_ms, 3),
         }
 
         result = ActionExecutionResult(
@@ -477,5 +512,7 @@ class SarthiMuJoCoRuntime(SimulationAdapter):
         """
         Validates that the executed action achieved the expected physical state change.
         """
+        _t0 = time.perf_counter()
         success, _ = self._verifier.verify(action, expected_outcome)
+        self._last_verify_latency_ms = (time.perf_counter() - _t0) * 1000.0
         return success

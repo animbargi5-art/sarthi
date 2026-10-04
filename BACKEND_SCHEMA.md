@@ -1,35 +1,65 @@
 # SĀRTHI — Backend Schema & Interface Contracts
 
-This document formalizes the data contracts, Pydantic v2 models, and JSON schemas governing inter-module communication across the **SĀRTHI** Physical AI architecture.
+**Project Name:** SĀRTHI  
+**Tagline:** An adaptive Physical AI architecture for context-aware, responsibility-driven robotic decision-making under changing physical conditions.  
+**Target Event:** Nebius × NVIDIA Global AI Hackathon 2026  
+**Document Version:** Version: 3.0  
+**Status:** Draft — V3 Architecture Update  
 
 ---
 
-## 1. Schema Domain Overview
+## 1. Safety Architecture & Core Invariant
+
+All data structures, serialization boundaries, and interface contracts adhere strictly to the fundamental safety invariant:
+
+> [!IMPORTANT]
+> **Core System Invariant:**  
+> **"AI models propose or select bounded semantic candidates; deterministic software validates physical feasibility; only validated actions reach the robot controller."**  
+> **"Jev must never bypass deterministic safety validation."**
+
+Jev-specific data representations are restricted to candidate proposals and bounded rankings. Physical actuation requires an authoritative, deterministic `Decision` validated against physical constraints.
+
+---
+
+## 2. Schema Hierarchy & Pipeline Flow
+
+The conceptual relationship governing data progression across SĀRTHI V3 is:
 
 ```text
-[ NVIDIA Isaac Sim ]
-        │  TelemetrySnapshot (100 Hz)
-        ▼
-[ Backend State Buffer ]
-        │  DisturbanceEvent
-        ▼
-[ Nebius Token Factory ] ──(NVIDIA Nemotron)──► NemotronRecoveryStrategy
-        │
-        ▼
-[ Deterministic Safety Validator ]
-        │  SafetyValidationResult / ValidatedMotionCommand
-        ▼
-[ NVIDIA Isaac Sim Robot Actuator ]
+[HumanInstruction] ──(Nemotron)──► [TaskUnderstanding]
+                                          │
+[PhysicalSituation] ──(StateReader)──► [DecisionContext]
+                                          │
+                                   [DecisionQuestion]
+                                          │
+                                    (Jev Provider)
+                                          │
+                                    [JevDecision]
+                                          │
+                                   [CandidateAction]
+                                          │
+                             (SĀRTHI Decision Engine)
+                                          │
+                                [CandidateEvaluation]
+                                          │
+                                      [Decision]
+                                          │
+                              (DLS IK & Articulation)
+                                          │
+                                   [ActionExecution]
+                                          │
+                                 (MuJoCo Stepping)
+                                          │
+                                   [ActionOutcome]
 ```
 
 ---
 
-## 2. Core Primitive Schemas
+## 3. Spatial & Physical Primitives
 
-### 2.1 Spatial Primitives
 ```python
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Dict, Optional, Any
 from enum import Enum
 
 class Vector3D(BaseModel):
@@ -38,143 +68,217 @@ class Vector3D(BaseModel):
     z: float = Field(..., description="Z coordinate in meters or Newtons")
 
 class Quaternion(BaseModel):
-    w: float = Field(..., description="Scalar component")
+    w: float = Field(..., description="Scalar quaternion component")
     x: float = Field(..., description="Vector component X")
     y: float = Field(..., description="Vector component Y")
     z: float = Field(..., description="Vector component Z")
 
 class Pose6D(BaseModel):
-    position: Vector3D = Field(..., description="Cartesian 3D position (m)")
+    position: Vector3D = Field(..., description="Cartesian 3D position in meters")
     orientation: Quaternion = Field(..., description="Unit quaternion orientation")
 ```
 
-### 2.2 Sensor & Telemetry Models
+---
+
+## 4. Human Command & Task Understanding Schemas
+
 ```python
-class JointTelemetry(BaseModel):
-    joint_names: List[str] = Field(..., description="Names of active manipulator joints")
-    positions: List[float] = Field(..., description="Joint positions in radians")
-    velocities: List[float] = Field(..., description="Joint velocities in rad/s")
-    torques: List[float] = Field(..., description="Joint efforts in Newton-meters (Nm)")
+class HumanInstruction(BaseModel):
+    instruction_id: str = Field(..., description="Unique UUID for the operator instruction")
+    raw_text: str = Field(..., description="Natural-language instruction, e.g. 'Move the red object to the blue target.'")
+    timestamp_ns: int = Field(..., description="Epoch timestamp in nanoseconds when instruction was received")
+    operator_id: Optional[str] = Field(default="operator_local", description="Identifier of the commanding agent")
 
-class ForceTorqueSensor(BaseModel):
-    force: Vector3D = Field(..., description="3-axis contact force (N)")
-    torque: Vector3D = Field(..., description="3-axis contact torque (Nm)")
-
-class TelemetrySnapshot(BaseModel):
-    timestamp_ns: int = Field(..., description="Simulation epoch timestamp in nanoseconds")
-    robot_id: str = Field(default="sarthi_franka_01", description="Identifier of the robotic agent")
-    joints: JointTelemetry = Field(..., description="Current joint kinematics and dynamics")
-    end_effector_pose: Pose6D = Field(..., description="World-frame 6D pose of the end-effector")
-    ft_sensor: ForceTorqueSensor = Field(..., description="Wrist 6-axis F/T readings")
-    is_gripping: bool = Field(..., description="Grip engagement boolean")
-    payload_mass_kg: float = Field(..., description="Estimated or nominal payload mass (kg)")
-    slip_detected: bool = Field(default=False, description="Physical slip flag reported by contact sensors")
+class TaskUnderstanding(BaseModel):
+    task_id: str = Field(..., description="Task understanding identifier")
+    task_type: str = Field(..., description="High-level category (e.g. 'PICK_AND_PLACE')")
+    target_object: str = Field(..., description="Canonical identifier of target entity (e.g. 'red_object')")
+    destination_zone: str = Field(..., description="Canonical identifier of destination (e.g. 'blue_target')")
+    required_actions: List[str] = Field(..., description="Expected semantic sequence: ['APPROACH', 'GRASP', 'MOVE', 'RELEASE']")
+    semantic_constraints: Dict[str, Any] = Field(default_factory=dict, description="Task-specific constraints (e.g. preserve_upright)")
+    raw_reasoning: Optional[str] = Field(None, description="Explanation trace generated by NVIDIA Nemotron")
 ```
 
 ---
 
-## 3. Disturbance & Anomaly Schemas
+## 5. Physical Situation & Decision Context Schemas
 
 ```python
-class DisturbanceType(str, Enum):
-    SLIP_TRANSLATIONAL = "SLIP_TRANSLATIONAL"
-    SLIP_ROTATIONAL = "SLIP_ROTATIONAL"
-    COLLISION_EXTERNAL = "COLLISION_EXTERNAL"
-    EXCESSIVE_TORQUE = "EXCESSIVE_TORQUE"
-    PAYLOAD_MASS_SHIFT = "PAYLOAD_MASS_SHIFT"
-    TRAJECTORY_DEVIATION = "TRAJECTORY_DEVIATION"
+class GripperState(str, Enum):
+    OPEN = "OPEN"
+    CLOSING = "CLOSING"
+    CLOSED_EMPTY = "CLOSED_EMPTY"
+    CLOSED_HOLDING = "CLOSED_HOLDING"
 
-class DisturbanceSeverity(str, Enum):
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
-    CRITICAL = "CRITICAL"
+class ObjectState(str, Enum):
+    FREE = "FREE"
+    IN_TRANSIT = "IN_TRANSIT"
+    PLACED = "PLACED"
 
-class DisturbanceEvent(BaseModel):
-    event_id: str = Field(..., description="Unique UUID for the disturbance occurrence")
-    timestamp_ns: int = Field(..., description="Detection timestamp in nanoseconds")
-    disturbance_type: DisturbanceType = Field(..., description="Classified nature of the physical anomaly")
-    severity: DisturbanceSeverity = Field(..., description="Assessed impact on operational safety")
-    trigger_sensor: str = Field(..., description="Sensor origin: 'FT_WRIST', 'JOINT_EFFORT', 'CONTACT_MESH'")
-    delta_magnitude: float = Field(..., description="Scalar metric of deviation (e.g., Delta Newtons or meters)")
-    telemetry_window: List[TelemetrySnapshot] = Field(..., description="Pre-disturbance temporal buffer (last 200ms)")
+class ActiveConstraint(BaseModel):
+    constraint_id: str = Field(..., description="Constraint identifier, e.g. 'PATH_BLOCKED'")
+    constraint_type: str = Field(..., description="Type: 'KEEPOUT_ZONE', 'MIN_CLEARANCE', 'JOINT_LIMIT'")
+    description: str = Field(..., description="Human-readable constraint explanation")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Numerical parameters (e.g. required clearance)")
+
+class PhysicalSituation(BaseModel):
+    situation_id: str = Field(..., description="Unique snapshot identifier")
+    timestamp_ns: int = Field(..., description="Snapshot timestamp")
+    world_state_version: int = Field(..., description="Monotonically increasing WorldState revision counter")
+    robot_ee_pose: Pose6D = Field(..., description="Current 6D pose of end-effector")
+    gripper_state: GripperState = Field(..., description="Physical gripper engagement state")
+    target_object_pose: Optional[Pose6D] = Field(None, description="Current coordinates of target object")
+    target_object_state: ObjectState = Field(default=ObjectState.FREE, description="Physical status of target object")
+    obstacle_detected: bool = Field(default=False, description="True if obstacle is actively detected")
+    active_constraints: List[ActiveConstraint] = Field(default_factory=list, description="Currently active physical constraints")
+    last_action_outcome: Optional[str] = Field(None, description="Outcome status of the preceding executed action")
+
+class DecisionContext(BaseModel):
+    context_id: str = Field(..., description="Identifier for this compact decision context")
+    task_goal: str = Field(..., description="High-level goal string")
+    current_phase: str = Field(..., description="Current task phase: 'PRE_APPROACH', 'POST_GRASP', 'RECOVERY'")
+    situation: PhysicalSituation = Field(..., description="Filtered physical situation parameters")
+    candidate_options: List[str] = Field(..., description="Allowed discrete action or strategy choices")
 ```
 
 ---
 
-## 4. Cognitive Inference Contracts (Nebius Token Factory & Nemotron)
+## 6. Fast Decision Schemas (Jev Bounded Decision Layer)
 
-### 4.1 Prompt Context Payload
 ```python
-class CognitivePromptContext(BaseModel):
-    mission_objective: str = Field(..., description="Active task (e.g., 'Transfer cylinder to pallet B')")
-    disturbance_summary: DisturbanceEvent = Field(..., description="Detailed anomaly metadata")
-    current_ee_pose: Pose6D = Field(..., description="Current end-effector location")
-    target_ee_pose: Pose6D = Field(..., description="Nominal target destination")
-    workspace_bounds: dict = Field(..., description="Safe bounding limits for validation awareness")
-    available_primitives: List[str] = Field(
-        default=["REGRASP_ADAPTIVE", "RETRACT_ALONG_NORMAL", "REPLAN_TRAJECTORY", "SAFE_CONTROLLED_DESCENT"]
-    )
-```
+class DecisionQuestionType(str, Enum):
+    RECOVERY_STRATEGY = "RECOVERY_STRATEGY"
+    CANDIDATE_ACTION_SELECTION = "CANDIDATE_ACTION_SELECTION"
+    RECOVERY_NECESSITY = "RECOVERY_NECESSITY"
+    TARGET_DISAMBIGUATION = "TARGET_DISAMBIGUATION"
 
-### 4.2 NVIDIA Nemotron Response Schema (Structured Output)
-```python
-class RecoveryTactic(str, Enum):
-    REGRASP_ADAPTIVE = "REGRASP_ADAPTIVE"
-    RETRACT_ALONG_NORMAL = "RETRACT_ALONG_NORMAL"
-    REPLAN_TRAJECTORY = "REPLAN_TRAJECTORY"
-    COMPLIANCE_ADJUST = "COMPLIANCE_ADJUST"
-    SAFE_CONTROLLED_DESCENT = "SAFE_CONTROLLED_DESCENT"
+class DecisionQuestion(BaseModel):
+    question_id: str = Field(..., description="Unique question UUID")
+    question_type: DecisionQuestionType = Field(..., description="Category of the bounded decision")
+    prompt_text: str = Field(..., description="Targeted decision query, e.g. 'Which recovery strategy should be considered?'")
+    options: List[str] = Field(..., description="Discrete candidate options, e.g. ['REPOSITION', 'REPLAN', 'REGRASP', 'STOP']")
+    context: DecisionContext = Field(..., description="Compact context payload")
 
-class NemotronRecoveryStrategy(BaseModel):
-    reasoning_trace: str = Field(..., description="Step-by-step physical diagnosis and cognitive rationale")
-    root_cause: str = Field(..., description="Identified physical cause of the disturbance")
-    recovery_tactic: RecoveryTactic = Field(..., description="Selected high-level recovery primitive")
-    grip_force_adjustment_newtons: float = Field(default=0.0, description="Differential clamping force adjustment (N)")
-    speed_scale_factor: float = Field(default=1.0, ge=0.1, le=1.0, description="Velocity scaling for safe recovery")
-    intermediate_waypoints: List[Pose6D] = Field(default=[], description="Proposed recovery trajectory waypoints")
-    confidence_score: float = Field(..., ge=0.0, le=1.0, description="Model self-evaluated confidence score")
+class JevDecision(BaseModel):
+    decision_id: str = Field(..., description="Unique Jev decision UUID")
+    question_id: str = Field(..., description="Referenced DecisionQuestion UUID")
+    selected_option: str = Field(..., description="Top recommended candidate option")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Model evaluated confidence score")
+    option_probabilities: Dict[str, float] = Field(default_factory=dict, description="Probability distribution over options")
+    rationale: Optional[str] = Field(None, description="Brief structured rationale for selection")
+    evaluation_duration_ms: float = Field(..., description="Latency of the Jev decision roundtrip in milliseconds")
 ```
 
 ---
 
-## 5. Deterministic Safety & Actuation Schemas
+## 7. Action Proposal, Evaluation & Authoritative Decision Schemas
 
 ```python
-class SafetyValidationStatus(str, Enum):
+class ActionType(str, Enum):
+    APPROACH = "APPROACH"
+    GRASP = "GRASP"
+    MOVE = "MOVE"
+    RELEASE = "RELEASE"
+    REPOSITION = "REPOSITION"
+    STOP = "STOP"
+
+class CandidateAction(BaseModel):
+    candidate_id: str = Field(..., description="Candidate action identifier")
+    action_type: ActionType = Field(..., description="Proposed action type")
+    target_pose: Optional[Pose6D] = Field(None, description="Target Cartesian waypoint")
+    target_entity: Optional[str] = Field(None, description="Target object or zone identifier")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Action-specific parameters (e.g. clearance z)")
+    proposer: str = Field(default="DETERMINISTIC_RUNNER", description="Proposer origin: 'JEV', 'DETERMINISTIC_RUNNER'")
+
+class EvaluationStatus(str, Enum):
     APPROVED = "APPROVED"
-    CLAMPED = "CLAMPED"
-    REJECTED_JOINT_LIMIT = "REJECTED_JOINT_LIMIT"
-    REJECTED_VELOCITY_LIMIT = "REJECTED_VELOCITY_LIMIT"
-    REJECTED_WORKSPACE_BREACH = "REJECTED_WORKSPACE_BREACH"
-    REJECTED_TIMEOUT = "REJECTED_TIMEOUT"
+    REJECTED_BLOCKED_PATH = "REJECTED_BLOCKED_PATH"
+    REJECTED_WORKSPACE_LIMIT = "REJECTED_WORKSPACE_LIMIT"
+    REJECTED_REACHABILITY = "REJECTED_REACHABILITY"
+    REJECTED_GRASP_PRECONDITION = "REJECTED_GRASP_PRECONDITION"
 
-class SafetyValidationResult(BaseModel):
-    status: SafetyValidationStatus = Field(..., description="Verification verdict")
-    is_safe_to_execute: bool = Field(..., description="Binary execution gate")
-    violation_reasons: List[str] = Field(default=[], description="Diagnostic list of safety violations if any")
-    execution_timeout_ms: int = Field(default=3000, description="Maximum execution duration allowed for recovery")
+class CandidateEvaluation(BaseModel):
+    candidate_id: str = Field(..., description="Referenced candidate action ID")
+    status: EvaluationStatus = Field(..., description="Evaluation outcome")
+    is_valid: bool = Field(..., description="True if action satisfies all physical constraints")
+    clearance_distance_m: Optional[float] = Field(None, description="Measured clearance distance to closest obstacle")
+    required_clearance_m: Optional[float] = Field(None, description="Threshold clearance required for approval")
+    rejection_reason: Optional[str] = Field(None, description="Diagnostic reason if action is rejected")
 
-class MotionCommand(BaseModel):
-    command_id: str = Field(..., description="Unique command execution ID")
-    tactic: RecoveryTactic = Field(..., description="Tactic being executed")
-    target_joint_positions: Optional[List[List[float]]] = Field(None, description="Interpolated trajectory setpoints")
-    gripper_target_effort: float = Field(..., description="Commanded gripper force/effort")
-    timestamp_ns: int = Field(..., description="Dispatch timestamp")
+class Decision(BaseModel):
+    decision_id: str = Field(..., description="Authoritative decision UUID")
+    selected_action: CandidateAction = Field(..., description="Authorized physical action to execute")
+    evaluation: CandidateEvaluation = Field(..., description="Deterministic constraint evaluation certifying safety")
+    authorized_by: str = Field(default="SarthiDecisionEngine", description="Authoritative gatekeeper component")
+    timestamp_ns: int = Field(..., description="Timestamp of final authorization")
 ```
 
 ---
 
-## 6. System State Enum
+## 8. Physical Execution & Outcome Verification Schemas
 
 ```python
-class SystemOperationalState(str, Enum):
-    INITIALIZING = "INITIALIZING"
-    NOMINAL = "NOMINAL"
-    DISTURBANCE_DETECTED = "DISTURBANCE_DETECTED"
-    COGNITIVE_DELIBERATING = "COGNITIVE_DELIBERATING"
-    RECOVERING = "RECOVERING"
-    RECOVERED_NOMINAL = "RECOVERED_NOMINAL"
-    SAFE_CONTROLLED_STOP = "SAFE_CONTROLLED_STOP"
-    EMERGENCY_STOP = "EMERGENCY_STOP"
+class ActionExecution(BaseModel):
+    execution_id: str = Field(..., description="Unique execution instance identifier")
+    decision_id: str = Field(..., description="Referenced authoritative decision ID")
+    action: CandidateAction = Field(..., description="Action being executed")
+    start_time_ns: int = Field(..., description="Timestamp execution commenced")
+    ik_iterations: int = Field(default=0, description="DLS IK convergence iterations")
+    ik_residual: float = Field(default=0.0, description="Final IK Cartesian position residual in meters")
+
+class OutcomeStatus(str, Enum):
+    VERIFIED_SUCCESS = "VERIFIED_SUCCESS"
+    EXECUTION_FAILED = "EXECUTION_FAILED"
+    VERIFICATION_FAILED = "VERIFICATION_FAILED"
+    COLLISION_DETECTED = "COLLISION_DETECTED"
+
+class ActionOutcome(BaseModel):
+    outcome_id: str = Field(..., description="Outcome record UUID")
+    execution_id: str = Field(..., description="Referenced execution ID")
+    status: OutcomeStatus = Field(..., description="Final physical outcome status")
+    duration_ms: float = Field(..., description="Total execution duration in milliseconds")
+    final_ee_pose: Pose6D = Field(..., description="Post-action measured end-effector pose")
+    final_object_pose: Optional[Pose6D] = Field(None, description="Post-action measured object pose")
+    placement_error_m: Optional[float] = Field(None, description="Euclidean distance to target destination")
+    verification_details: Dict[str, Any] = Field(default_factory=dict, description="Detailed physical checks performed")
+```
+
+---
+
+## 9. Physics Validation & Telemetry Schemas
+
+```python
+class PhysicsValidationResult(BaseModel):
+    test_id: str = Field(..., description="Physics validation test identifier (PV-1 through PV-12)")
+    test_name: str = Field(..., description="Name of test dimension (e.g. 'Timestep Sensitivity')")
+    passed: bool = Field(..., description="True if test met validation threshold")
+    measured_metric: str = Field(..., description="Metric name (e.g. 'final_position_deviation')")
+    measured_value: float = Field(..., description="Empirical numerical value measured")
+    threshold_value: float = Field(..., description="Configured tolerance threshold")
+    details: Dict[str, Any] = Field(default_factory=dict, description="Supplementary test parameters and conditions")
+
+class DecisionLatencyRecord(BaseModel):
+    cycle_id: str = Field(..., description="Decision cycle identifier")
+    task_understanding_ms: Optional[float] = Field(None, description="Nemotron instruction parsing latency")
+    context_build_ms: float = Field(..., description="DecisionContext assembly latency")
+    jev_decision_ms: Optional[float] = Field(None, description="Jev fast decision query latency")
+    deterministic_validation_ms: float = Field(..., description="Decision Engine constraint evaluation latency")
+    execution_ms: float = Field(..., description="MuJoCo physics execution duration")
+    verification_ms: float = Field(..., description="Post-action state verification latency")
+    total_cycle_ms: float = Field(..., description="Total elapsed time for decision cycle")
+
+class RecoveryEvent(BaseModel):
+    event_id: str = Field(..., description="Recovery event identifier")
+    timestamp_ns: int = Field(..., description="Detection timestamp")
+    trigger_constraint: str = Field(..., description="Constraint causing recovery (e.g. 'PATH_BLOCKED')")
+    rejected_action: ActionType = Field(..., description="Action that violated constraint")
+    selected_recovery: ActionType = Field(..., description="Recovery action chosen (e.g. 'REPOSITION')")
+    clearance_delta_m: float = Field(..., description="Deficit in required obstacle clearance")
+    recovery_altitude_m: Optional[float] = Field(None, description="Elevated transit altitude")
+
+class TelemetryEvent(BaseModel):
+    event_id: str = Field(..., description="Telemetry event UUID")
+    timestamp_ns: int = Field(..., description="Event timestamp")
+    event_type: str = Field(..., description="Category: 'STATE_UPDATE', 'DECISION', 'RECOVERY', 'LATENCY'")
+    payload: Dict[str, Any] = Field(..., description="Structured event payload")
 ```

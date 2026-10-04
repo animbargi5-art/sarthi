@@ -27,6 +27,10 @@ from backend.app.decision_engine.responsibility import ResponsibilityEvaluator
 from backend.app.decision_engine.relevance import RelevanceEvaluator
 from backend.app.decision_engine.selector import ActionSelector
 from backend.app.decision_engine.engine import SarthiDecisionEngine
+from backend.app.decision_engine.candidate_injector import (
+    CandidateActionInjector,
+    CandidateInjectionTelemetry,
+)
 
 __all__ = [
     "ActionType",
@@ -51,4 +55,6 @@ __all__ = [
     "RelevanceEvaluator",
     "ActionSelector",
     "SarthiDecisionEngine",
+    "CandidateActionInjector",
+    "CandidateInjectionTelemetry",
 ]

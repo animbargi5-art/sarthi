@@ -1,0 +1,1562 @@
+{
+  "report_id": "rep_v3_9_2",
+  "timestamp_iso": "2026-10-04T14:24:14.485793+00:00",
+  "hardware_environment": {
+    "os": "Windows 11",
+    "mujoco_version": "3.14.0",
+    "dof": 7
+  },
+  "level_a_physics": {
+    "level_name": "LEVEL_A_PHYSICS_REPLAY",
+    "num_runs": 5,
+    "identical_action_sequences": true,
+    "identical_world_state_transitions": true,
+    "all_runs_succeeded": true,
+    "mean_placement_error_m": 0.01756,
+    "max_placement_error_m": 0.01756,
+    "std_placement_error_m": 0.0,
+    "max_euclidean_pose_spread_m": 0.0,
+    "run_records": [
+      {
+        "run_index": 1,
+        "actions": [
+          "APPROACH",
+          "GRASP",
+          "REPOSITION",
+          "MOVE",
+          "RELEASE"
+        ],
+        "final_position": [
+          0.404,
+          -0.1829,
+          0.19981
+        ],
+        "placement_error_m": 0.01756,
+        "within_tolerance": true
+      },
+      {
+        "run_index": 2,
+        "actions": [
+          "APPROACH",
+          "GRASP",
+          "REPOSITION",
+          "MOVE",
+          "RELEASE"
+        ],
+        "final_position": [
+          0.404,
+          -0.1829,
+          0.19981
+        ],
+        "placement_error_m": 0.01756,
+        "within_tolerance": true
+      },
+      {
+        "run_index": 3,
+        "actions": [
+          "APPROACH",
+          "GRASP",
+          "REPOSITION",
+          "MOVE",
+          "RELEASE"
+        ],
+        "final_position": [
+          0.404,
+          -0.1829,
+          0.19981
+        ],
+        "placement_error_m": 0.01756,
+        "within_tolerance": true
+      },
+      {
+        "run_index": 4,
+        "actions": [
+          "APPROACH",
+          "GRASP",
+          "REPOSITION",
+          "MOVE",
+          "RELEASE"
+        ],
+        "final_position": [
+          0.404,
+          -0.1829,
+          0.19981
+        ],
+        "placement_error_m": 0.01756,
+        "within_tolerance": true
+      },
+      {
+        "run_index": 5,
+        "actions": [
+          "APPROACH",
+          "GRASP",
+          "REPOSITION",
+          "MOVE",
+          "RELEASE"
+        ],
+        "final_position": [
+          0.404,
+          -0.1829,
+          0.19981
+        ],
+        "placement_error_m": 0.01756,
+        "within_tolerance": true
+      }
+    ]
+  },
+  "level_b_decision": {
+    "level_name": "LEVEL_B_DECISION_REPLAY",
+    "num_runs": 5,
+    "logical_decision_agreement_rate": 1.0,
+    "deterministic_validation_agreement_rate": 1.0,
+    "candidate_injection_validity_rate": 1.0,
+    "selected_options": [
+      "REPOSITION",
+      "REPOSITION",
+      "REPOSITION",
+      "REPOSITION",
+      "REPOSITION"
+    ],
+    "option_probabilities": [
+      {
+        "REPOSITION": 0.5619,
+        "STOP": 0.4381
+      },
+      {
+        "REPOSITION": 0.5619,
+        "STOP": 0.4381
+      },
+      {
+        "REPOSITION": 0.5619,
+        "STOP": 0.4381
+      },
+      {
+        "REPOSITION": 0.5619,
+        "STOP": 0.4381
+      },
+      {
+        "REPOSITION": 0.5619,
+        "STOP": 0.4381
+      }
+    ],
+    "deterministic_decisions": [
+      "REPOSITION",
+      "REPOSITION",
+      "REPOSITION",
+      "REPOSITION",
+      "REPOSITION"
+    ],
+    "rejection_reasons": [
+      [],
+      [],
+      [],
+      [],
+      []
+    ],
+    "run_records": [
+      {
+        "run_index": 1,
+        "laya_selected_option": "REPOSITION",
+        "laya_confidence": 0.0111,
+        "answer_confidence": 0.5619,
+        "probabilities": {
+          "REPOSITION": 0.5619,
+          "STOP": 0.4381
+        },
+        "injected_candidate": "REPOSITION",
+        "deterministic_selected_action": "REPOSITION",
+        "rejection_reasons": []
+      },
+      {
+        "run_index": 2,
+        "laya_selected_option": "REPOSITION",
+        "laya_confidence": 0.0111,
+        "answer_confidence": 0.5619,
+        "probabilities": {
+          "REPOSITION": 0.5619,
+          "STOP": 0.4381
+        },
+        "injected_candidate": "REPOSITION",
+        "deterministic_selected_action": "REPOSITION",
+        "rejection_reasons": []
+      },
+      {
+        "run_index": 3,
+        "laya_selected_option": "REPOSITION",
+        "laya_confidence": 0.0111,
+        "answer_confidence": 0.5619,
+        "probabilities": {
+          "REPOSITION": 0.5619,
+          "STOP": 0.4381
+        },
+        "injected_candidate": "REPOSITION",
+        "deterministic_selected_action": "REPOSITION",
+        "rejection_reasons": []
+      },
+      {
+        "run_index": 4,
+        "laya_selected_option": "REPOSITION",
+        "laya_confidence": 0.0111,
+        "answer_confidence": 0.5619,
+        "probabilities": {
+          "REPOSITION": 0.5619,
+          "STOP": 0.4381
+        },
+        "injected_candidate": "REPOSITION",
+        "deterministic_selected_action": "REPOSITION",
+        "rejection_reasons": []
+      },
+      {
+        "run_index": 5,
+        "laya_selected_option": "REPOSITION",
+        "laya_confidence": 0.0111,
+        "answer_confidence": 0.5619,
+        "probabilities": {
+          "REPOSITION": 0.5619,
+          "STOP": 0.4381
+        },
+        "injected_candidate": "REPOSITION",
+        "deterministic_selected_action": "REPOSITION",
+        "rejection_reasons": []
+      }
+    ]
+  },
+  "level_c_live_runs": [
+    {
+      "run_id": "v3_run_1791123832759",
+      "run_index": 1,
+      "task_understanding_success": true,
+      "task_target_object": "red_object",
+      "task_target_zone": "",
+      "laya_decisions": [
+        {
+          "step_number": 1,
+          "question_id": "q_v3_step_1_34665",
+          "question_text": "Which action should be executed to initiate the task?",
+          "available_options": [
+            "APPROACH",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "APPROACH",
+          "laya_probabilities": {
+            "APPROACH": 0.713,
+            "STOP": 0.287
+          },
+          "laya_confidence": 0.1352,
+          "answer_confidence": 0.713,
+          "laya_latency_ms": 358.445,
+          "candidate_action": "APPROACH",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "APPROACH",
+          "final_decision_score": 0.8967,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 1,
+          "world_state_version_after": 2,
+          "timestamp_ns": 1791123835053685500,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.137,
+            "tau_jev_ms": 358.445,
+            "tau_validation_ms": 0.28,
+            "tau_ik_ms": 9.201,
+            "tau_sim_ms": 19.715,
+            "tau_verify_ms": 0.042,
+            "tau_total_ms": 388.126
+          }
+        },
+        {
+          "step_number": 2,
+          "question_id": "q_v3_step_2_35053",
+          "question_text": "Which action should be executed to grasp the object?",
+          "available_options": [
+            "GRASP",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "GRASP",
+          "laya_probabilities": {
+            "GRASP": 0.62,
+            "STOP": 0.38
+          },
+          "laya_confidence": 0.042,
+          "answer_confidence": 0.62,
+          "laya_latency_ms": 374.627,
+          "candidate_action": "GRASP",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "GRASP",
+          "final_decision_score": 0.9016,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 3,
+          "world_state_version_after": 4,
+          "timestamp_ns": 1791123835476614500,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.192,
+            "tau_jev_ms": 374.627,
+            "tau_validation_ms": 0.463,
+            "tau_ik_ms": 2.579,
+            "tau_sim_ms": 44.812,
+            "tau_verify_ms": 0.179,
+            "tau_total_ms": 423.114
+          }
+        },
+        {
+          "step_number": 3,
+          "question_id": "q_v3_step_3_35476",
+          "question_text": "Which recovery action should be considered?",
+          "available_options": [
+            "REPOSITION",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "REPOSITION",
+          "laya_probabilities": {
+            "REPOSITION": 0.5643,
+            "STOP": 0.4357
+          },
+          "laya_confidence": 0.012,
+          "answer_confidence": 0.5643,
+          "laya_latency_ms": 454.48,
+          "candidate_action": "REPOSITION",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "REPOSITION",
+          "final_decision_score": 0.7911,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 4,
+          "world_state_version_after": 5,
+          "timestamp_ns": 1791123835969200300,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.183,
+            "tau_jev_ms": 454.48,
+            "tau_validation_ms": 0.502,
+            "tau_ik_ms": 4.638,
+            "tau_sim_ms": 32.52,
+            "tau_verify_ms": 0.036,
+            "tau_total_ms": 492.744
+          }
+        },
+        {
+          "step_number": 4,
+          "question_id": "q_v3_step_4_35970",
+          "question_text": "Which action should be executed to transport the object?",
+          "available_options": [
+            "MOVE",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "MOVE",
+          "laya_probabilities": {
+            "MOVE": 0.7466,
+            "STOP": 0.2534
+          },
+          "laya_confidence": 0.1834,
+          "answer_confidence": 0.7466,
+          "laya_latency_ms": 349.192,
+          "candidate_action": "MOVE",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "MOVE",
+          "final_decision_score": 0.8758,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 5,
+          "world_state_version_after": 6,
+          "timestamp_ns": 1791123836404000800,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.153,
+            "tau_jev_ms": 349.192,
+            "tau_validation_ms": 0.486,
+            "tau_ik_ms": 13.549,
+            "tau_sim_ms": 70.382,
+            "tau_verify_ms": 0.05,
+            "tau_total_ms": 434.376
+          }
+        },
+        {
+          "step_number": 5,
+          "question_id": "q_v3_step_5_36404",
+          "question_text": "Which action should be executed to release the object?",
+          "available_options": [
+            "RELEASE",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "RELEASE",
+          "laya_probabilities": {
+            "RELEASE": 0.7549,
+            "STOP": 0.2451
+          },
+          "laya_confidence": 0.1966,
+          "answer_confidence": 0.7549,
+          "laya_latency_ms": 310.192,
+          "candidate_action": "RELEASE",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "RELEASE",
+          "final_decision_score": 0.8181,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 6,
+          "world_state_version_after": 7,
+          "timestamp_ns": 1791123836728606200,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.2,
+            "tau_jev_ms": 310.192,
+            "tau_validation_ms": 0.297,
+            "tau_ik_ms": 0.0,
+            "tau_sim_ms": 12.757,
+            "tau_verify_ms": 0.209,
+            "tau_total_ms": 324.131
+          }
+        }
+      ],
+      "candidate_actions": [
+        "APPROACH",
+        "GRASP",
+        "REPOSITION",
+        "MOVE",
+        "RELEASE"
+      ],
+      "deterministic_actions": [
+        "APPROACH",
+        "GRASP",
+        "REPOSITION",
+        "MOVE",
+        "RELEASE"
+      ],
+      "execution_results": [
+        {
+          "step": 1,
+          "success": true
+        },
+        {
+          "step": 2,
+          "success": true
+        },
+        {
+          "step": 3,
+          "success": true
+        },
+        {
+          "step": 4,
+          "success": true
+        },
+        {
+          "step": 5,
+          "success": true
+        }
+      ],
+      "recovery_occurred": true,
+      "recovery_action": "REPOSITION",
+      "final_object_position": [
+        0.40844,
+        -0.15669,
+        0.19991
+      ],
+      "final_placement_error_m": 0.04412,
+      "placement_within_tolerance": true,
+      "final_task_status": "COMPLETED",
+      "completed": true,
+      "failure_classification": "NONE",
+      "latency_summary": {
+        "tau_nemotron_ms": 1905.626,
+        "tau_context_ms": 0.865,
+        "tau_jev_ms": 1846.936,
+        "tau_validation_ms": 2.028,
+        "tau_ik_ms": 29.967,
+        "tau_sim_ms": 180.186,
+        "tau_verify_ms": 0.516,
+        "tau_total_ms": 3969.613
+      }
+    },
+    {
+      "run_id": "v3_run_1791123836957",
+      "run_index": 2,
+      "task_understanding_success": true,
+      "task_target_object": "red_object",
+      "task_target_zone": "",
+      "laya_decisions": [
+        {
+          "step_number": 1,
+          "question_id": "q_v3_step_1_40180",
+          "question_text": "Which action should be executed to initiate the task?",
+          "available_options": [
+            "APPROACH",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "APPROACH",
+          "laya_probabilities": {
+            "APPROACH": 0.713,
+            "STOP": 0.287
+          },
+          "laya_confidence": 0.1352,
+          "answer_confidence": 0.713,
+          "laya_latency_ms": 366.182,
+          "candidate_action": "APPROACH",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "APPROACH",
+          "final_decision_score": 0.8967,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 1,
+          "world_state_version_after": 2,
+          "timestamp_ns": 1791123840575267600,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.244,
+            "tau_jev_ms": 366.182,
+            "tau_validation_ms": 0.49,
+            "tau_ik_ms": 9.701,
+            "tau_sim_ms": 17.413,
+            "tau_verify_ms": 0.032,
+            "tau_total_ms": 394.342
+          }
+        },
+        {
+          "step_number": 2,
+          "question_id": "q_v3_step_2_40575",
+          "question_text": "Which action should be executed to grasp the object?",
+          "available_options": [
+            "GRASP",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "GRASP",
+          "laya_probabilities": {
+            "GRASP": 0.62,
+            "STOP": 0.38
+          },
+          "laya_confidence": 0.042,
+          "answer_confidence": 0.62,
+          "laya_latency_ms": 344.505,
+          "candidate_action": "GRASP",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "GRASP",
+          "final_decision_score": 0.9016,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 3,
+          "world_state_version_after": 4,
+          "timestamp_ns": 1791123840964732800,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.235,
+            "tau_jev_ms": 344.505,
+            "tau_validation_ms": 0.493,
+            "tau_ik_ms": 1.452,
+            "tau_sim_ms": 41.926,
+            "tau_verify_ms": 0.179,
+            "tau_total_ms": 389.17
+          }
+        },
+        {
+          "step_number": 3,
+          "question_id": "q_v3_step_3_40964",
+          "question_text": "Which recovery action should be considered?",
+          "available_options": [
+            "REPOSITION",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "REPOSITION",
+          "laya_probabilities": {
+            "REPOSITION": 0.5643,
+            "STOP": 0.4357
+          },
+          "laya_confidence": 0.012,
+          "answer_confidence": 0.5643,
+          "laya_latency_ms": 454.68,
+          "candidate_action": "REPOSITION",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "REPOSITION",
+          "final_decision_score": 0.7911,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 4,
+          "world_state_version_after": 5,
+          "timestamp_ns": 1791123841459533400,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.223,
+            "tau_jev_ms": 454.68,
+            "tau_validation_ms": 0.519,
+            "tau_ik_ms": 5.877,
+            "tau_sim_ms": 31.774,
+            "tau_verify_ms": 0.281,
+            "tau_total_ms": 494.517
+          }
+        },
+        {
+          "step_number": 4,
+          "question_id": "q_v3_step_4_41459",
+          "question_text": "Which action should be executed to transport the object?",
+          "available_options": [
+            "MOVE",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "MOVE",
+          "laya_probabilities": {
+            "MOVE": 0.7466,
+            "STOP": 0.2534
+          },
+          "laya_confidence": 0.1834,
+          "answer_confidence": 0.7466,
+          "laya_latency_ms": 358.188,
+          "candidate_action": "MOVE",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "MOVE",
+          "final_decision_score": 0.8758,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 5,
+          "world_state_version_after": 6,
+          "timestamp_ns": 1791123841876248500,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.161,
+            "tau_jev_ms": 358.188,
+            "tau_validation_ms": 0.289,
+            "tau_ik_ms": 6.202,
+            "tau_sim_ms": 51.38,
+            "tau_verify_ms": 0.049,
+            "tau_total_ms": 416.741
+          }
+        },
+        {
+          "step_number": 5,
+          "question_id": "q_v3_step_5_41876",
+          "question_text": "Which action should be executed to release the object?",
+          "available_options": [
+            "RELEASE",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "RELEASE",
+          "laya_probabilities": {
+            "RELEASE": 0.7549,
+            "STOP": 0.2451
+          },
+          "laya_confidence": 0.1966,
+          "answer_confidence": 0.7549,
+          "laya_latency_ms": 362.223,
+          "candidate_action": "RELEASE",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "RELEASE",
+          "final_decision_score": 0.8181,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 6,
+          "world_state_version_after": 7,
+          "timestamp_ns": 1791123842254007300,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.193,
+            "tau_jev_ms": 362.223,
+            "tau_validation_ms": 0.302,
+            "tau_ik_ms": 0.0,
+            "tau_sim_ms": 14.225,
+            "tau_verify_ms": 0.203,
+            "tau_total_ms": 377.468
+          }
+        }
+      ],
+      "candidate_actions": [
+        "APPROACH",
+        "GRASP",
+        "REPOSITION",
+        "MOVE",
+        "RELEASE"
+      ],
+      "deterministic_actions": [
+        "APPROACH",
+        "GRASP",
+        "REPOSITION",
+        "MOVE",
+        "RELEASE"
+      ],
+      "execution_results": [
+        {
+          "step": 1,
+          "success": true
+        },
+        {
+          "step": 2,
+          "success": true
+        },
+        {
+          "step": 3,
+          "success": true
+        },
+        {
+          "step": 4,
+          "success": true
+        },
+        {
+          "step": 5,
+          "success": true
+        }
+      ],
+      "recovery_occurred": true,
+      "recovery_action": "REPOSITION",
+      "final_object_position": [
+        0.40844,
+        -0.15669,
+        0.19991
+      ],
+      "final_placement_error_m": 0.04412,
+      "placement_within_tolerance": true,
+      "final_task_status": "COMPLETED",
+      "completed": true,
+      "failure_classification": "NONE",
+      "latency_summary": {
+        "tau_nemotron_ms": 3222.785,
+        "tau_context_ms": 1.056,
+        "tau_jev_ms": 1885.778,
+        "tau_validation_ms": 2.093,
+        "tau_ik_ms": 23.232,
+        "tau_sim_ms": 156.718,
+        "tau_verify_ms": 0.744,
+        "tau_total_ms": 5297.337
+      }
+    },
+    {
+      "run_id": "v3_run_1791123842493",
+      "run_index": 3,
+      "task_understanding_success": true,
+      "task_target_object": "red_object",
+      "task_target_zone": "",
+      "laya_decisions": [
+        {
+          "step_number": 1,
+          "question_id": "q_v3_step_1_44001",
+          "question_text": "Which action should be executed to initiate the task?",
+          "available_options": [
+            "APPROACH",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "APPROACH",
+          "laya_probabilities": {
+            "APPROACH": 0.713,
+            "STOP": 0.287
+          },
+          "laya_confidence": 0.1352,
+          "answer_confidence": 0.713,
+          "laya_latency_ms": 331.801,
+          "candidate_action": "APPROACH",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "APPROACH",
+          "final_decision_score": 0.8967,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 1,
+          "world_state_version_after": 2,
+          "timestamp_ns": 1791123844374419300,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.197,
+            "tau_jev_ms": 331.801,
+            "tau_validation_ms": 0.487,
+            "tau_ik_ms": 15.693,
+            "tau_sim_ms": 24.175,
+            "tau_verify_ms": 0.04,
+            "tau_total_ms": 372.696
+          }
+        },
+        {
+          "step_number": 2,
+          "question_id": "q_v3_step_2_44375",
+          "question_text": "Which action should be executed to grasp the object?",
+          "available_options": [
+            "GRASP",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "GRASP",
+          "laya_probabilities": {
+            "GRASP": 0.62,
+            "STOP": 0.38
+          },
+          "laya_confidence": 0.042,
+          "answer_confidence": 0.62,
+          "laya_latency_ms": 371.245,
+          "candidate_action": "GRASP",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "GRASP",
+          "final_decision_score": 0.9016,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 3,
+          "world_state_version_after": 4,
+          "timestamp_ns": 1791123844787747900,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.211,
+            "tau_jev_ms": 371.245,
+            "tau_validation_ms": 0.46,
+            "tau_ik_ms": 2.481,
+            "tau_sim_ms": 37.769,
+            "tau_verify_ms": 0.169,
+            "tau_total_ms": 412.591
+          }
+        },
+        {
+          "step_number": 3,
+          "question_id": "q_v3_step_3_44787",
+          "question_text": "Which recovery action should be considered?",
+          "available_options": [
+            "REPOSITION",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "REPOSITION",
+          "laya_probabilities": {
+            "REPOSITION": 0.5643,
+            "STOP": 0.4357
+          },
+          "laya_confidence": 0.012,
+          "answer_confidence": 0.5643,
+          "laya_latency_ms": 502.175,
+          "candidate_action": "REPOSITION",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "REPOSITION",
+          "final_decision_score": 0.7911,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 4,
+          "world_state_version_after": 5,
+          "timestamp_ns": 1791123845327095300,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.18,
+            "tau_jev_ms": 502.175,
+            "tau_validation_ms": 0.276,
+            "tau_ik_ms": 3.283,
+            "tau_sim_ms": 32.943,
+            "tau_verify_ms": 0.048,
+            "tau_total_ms": 539.385
+          }
+        },
+        {
+          "step_number": 4,
+          "question_id": "q_v3_step_4_45327",
+          "question_text": "Which action should be executed to transport the object?",
+          "available_options": [
+            "MOVE",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "MOVE",
+          "laya_probabilities": {
+            "MOVE": 0.7466,
+            "STOP": 0.2534
+          },
+          "laya_confidence": 0.1834,
+          "answer_confidence": 0.7466,
+          "laya_latency_ms": 355.767,
+          "candidate_action": "MOVE",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "MOVE",
+          "final_decision_score": 0.8758,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 5,
+          "world_state_version_after": 6,
+          "timestamp_ns": 1791123845749844900,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.217,
+            "tau_jev_ms": 355.767,
+            "tau_validation_ms": 0.5,
+            "tau_ik_ms": 9.775,
+            "tau_sim_ms": 55.249,
+            "tau_verify_ms": 0.058,
+            "tau_total_ms": 422.17
+          }
+        },
+        {
+          "step_number": 5,
+          "question_id": "q_v3_step_5_45749",
+          "question_text": "Which action should be executed to release the object?",
+          "available_options": [
+            "RELEASE",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "RELEASE",
+          "laya_probabilities": {
+            "RELEASE": 0.7549,
+            "STOP": 0.2451
+          },
+          "laya_confidence": 0.1966,
+          "answer_confidence": 0.7549,
+          "laya_latency_ms": 377.727,
+          "candidate_action": "RELEASE",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "RELEASE",
+          "final_decision_score": 0.8181,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 6,
+          "world_state_version_after": 7,
+          "timestamp_ns": 1791123846146878700,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.194,
+            "tau_jev_ms": 377.727,
+            "tau_validation_ms": 0.464,
+            "tau_ik_ms": 0.0,
+            "tau_sim_ms": 18.704,
+            "tau_verify_ms": 0.216,
+            "tau_total_ms": 397.639
+          }
+        }
+      ],
+      "candidate_actions": [
+        "APPROACH",
+        "GRASP",
+        "REPOSITION",
+        "MOVE",
+        "RELEASE"
+      ],
+      "deterministic_actions": [
+        "APPROACH",
+        "GRASP",
+        "REPOSITION",
+        "MOVE",
+        "RELEASE"
+      ],
+      "execution_results": [
+        {
+          "step": 1,
+          "success": true
+        },
+        {
+          "step": 2,
+          "success": true
+        },
+        {
+          "step": 3,
+          "success": true
+        },
+        {
+          "step": 4,
+          "success": true
+        },
+        {
+          "step": 5,
+          "success": true
+        }
+      ],
+      "recovery_occurred": true,
+      "recovery_action": "REPOSITION",
+      "final_object_position": [
+        0.40844,
+        -0.15669,
+        0.19991
+      ],
+      "final_placement_error_m": 0.04412,
+      "placement_within_tolerance": true,
+      "final_task_status": "COMPLETED",
+      "completed": true,
+      "failure_classification": "NONE",
+      "latency_summary": {
+        "tau_nemotron_ms": 1508.12,
+        "tau_context_ms": 0.999,
+        "tau_jev_ms": 1938.715,
+        "tau_validation_ms": 2.187,
+        "tau_ik_ms": 31.232,
+        "tau_sim_ms": 168.84,
+        "tau_verify_ms": 0.531,
+        "tau_total_ms": 3654.665
+      }
+    },
+    {
+      "run_id": "v3_run_1791123846384",
+      "run_index": 4,
+      "task_understanding_success": true,
+      "task_target_object": "red_object",
+      "task_target_zone": "",
+      "laya_decisions": [
+        {
+          "step_number": 1,
+          "question_id": "q_v3_step_1_48320",
+          "question_text": "Which action should be executed to initiate the task?",
+          "available_options": [
+            "APPROACH",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "APPROACH",
+          "laya_probabilities": {
+            "APPROACH": 0.713,
+            "STOP": 0.287
+          },
+          "laya_confidence": 0.1352,
+          "answer_confidence": 0.713,
+          "laya_latency_ms": 357.182,
+          "candidate_action": "APPROACH",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "APPROACH",
+          "final_decision_score": 0.8967,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 1,
+          "world_state_version_after": 2,
+          "timestamp_ns": 1791123848713661400,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.322,
+            "tau_jev_ms": 357.182,
+            "tau_validation_ms": 0.356,
+            "tau_ik_ms": 11.807,
+            "tau_sim_ms": 23.109,
+            "tau_verify_ms": 0.087,
+            "tau_total_ms": 393.389
+          }
+        },
+        {
+          "step_number": 2,
+          "question_id": "q_v3_step_2_48714",
+          "question_text": "Which action should be executed to grasp the object?",
+          "available_options": [
+            "GRASP",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "GRASP",
+          "laya_probabilities": {
+            "GRASP": 0.62,
+            "STOP": 0.38
+          },
+          "laya_confidence": 0.042,
+          "answer_confidence": 0.62,
+          "laya_latency_ms": 370.149,
+          "candidate_action": "GRASP",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "GRASP",
+          "final_decision_score": 0.9016,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 3,
+          "world_state_version_after": 4,
+          "timestamp_ns": 1791123849133127800,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.29,
+            "tau_jev_ms": 370.149,
+            "tau_validation_ms": 0.486,
+            "tau_ik_ms": 2.391,
+            "tau_sim_ms": 44.359,
+            "tau_verify_ms": 0.171,
+            "tau_total_ms": 418.097
+          }
+        },
+        {
+          "step_number": 3,
+          "question_id": "q_v3_step_3_49133",
+          "question_text": "Which recovery action should be considered?",
+          "available_options": [
+            "REPOSITION",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "REPOSITION",
+          "laya_probabilities": {
+            "REPOSITION": 0.5643,
+            "STOP": 0.4357
+          },
+          "laya_confidence": 0.012,
+          "answer_confidence": 0.5643,
+          "laya_latency_ms": 466.875,
+          "candidate_action": "REPOSITION",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "REPOSITION",
+          "final_decision_score": 0.7911,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 4,
+          "world_state_version_after": 5,
+          "timestamp_ns": 1791123849644648700,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.176,
+            "tau_jev_ms": 466.875,
+            "tau_validation_ms": 0.511,
+            "tau_ik_ms": 4.764,
+            "tau_sim_ms": 38.477,
+            "tau_verify_ms": 0.088,
+            "tau_total_ms": 511.553
+          }
+        },
+        {
+          "step_number": 4,
+          "question_id": "q_v3_step_4_49645",
+          "question_text": "Which action should be executed to transport the object?",
+          "available_options": [
+            "MOVE",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "MOVE",
+          "laya_probabilities": {
+            "MOVE": 0.7466,
+            "STOP": 0.2534
+          },
+          "laya_confidence": 0.1834,
+          "answer_confidence": 0.7466,
+          "laya_latency_ms": 395.942,
+          "candidate_action": "MOVE",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "MOVE",
+          "final_decision_score": 0.8758,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 5,
+          "world_state_version_after": 6,
+          "timestamp_ns": 1791123850105701000,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.322,
+            "tau_jev_ms": 395.942,
+            "tau_validation_ms": 0.318,
+            "tau_ik_ms": 6.139,
+            "tau_sim_ms": 57.387,
+            "tau_verify_ms": 0.048,
+            "tau_total_ms": 461.015
+          }
+        },
+        {
+          "step_number": 5,
+          "question_id": "q_v3_step_5_50106",
+          "question_text": "Which action should be executed to release the object?",
+          "available_options": [
+            "RELEASE",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "RELEASE",
+          "laya_probabilities": {
+            "RELEASE": 0.7549,
+            "STOP": 0.2451
+          },
+          "laya_confidence": 0.1966,
+          "answer_confidence": 0.7549,
+          "laya_latency_ms": 379.189,
+          "candidate_action": "RELEASE",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "RELEASE",
+          "final_decision_score": 0.8181,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 6,
+          "world_state_version_after": 7,
+          "timestamp_ns": 1791123850508942400,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.284,
+            "tau_jev_ms": 379.189,
+            "tau_validation_ms": 0.471,
+            "tau_ik_ms": 0.0,
+            "tau_sim_ms": 21.298,
+            "tau_verify_ms": 0.285,
+            "tau_total_ms": 402.03
+          }
+        }
+      ],
+      "candidate_actions": [
+        "APPROACH",
+        "GRASP",
+        "REPOSITION",
+        "MOVE",
+        "RELEASE"
+      ],
+      "deterministic_actions": [
+        "APPROACH",
+        "GRASP",
+        "REPOSITION",
+        "MOVE",
+        "RELEASE"
+      ],
+      "execution_results": [
+        {
+          "step": 1,
+          "success": true
+        },
+        {
+          "step": 2,
+          "success": true
+        },
+        {
+          "step": 3,
+          "success": true
+        },
+        {
+          "step": 4,
+          "success": true
+        },
+        {
+          "step": 5,
+          "success": true
+        }
+      ],
+      "recovery_occurred": true,
+      "recovery_action": "REPOSITION",
+      "final_object_position": [
+        0.40844,
+        -0.15669,
+        0.19991
+      ],
+      "final_placement_error_m": 0.04412,
+      "placement_within_tolerance": true,
+      "final_task_status": "COMPLETED",
+      "completed": true,
+      "failure_classification": "NONE",
+      "latency_summary": {
+        "tau_nemotron_ms": 1935.371,
+        "tau_context_ms": 1.394,
+        "tau_jev_ms": 1969.337,
+        "tau_validation_ms": 2.142,
+        "tau_ik_ms": 25.101,
+        "tau_sim_ms": 184.63,
+        "tau_verify_ms": 0.679,
+        "tau_total_ms": 4124.301
+      }
+    },
+    {
+      "run_id": "v3_run_1791123850728",
+      "run_index": 5,
+      "task_understanding_success": true,
+      "task_target_object": "red_object",
+      "task_target_zone": "",
+      "laya_decisions": [
+        {
+          "step_number": 1,
+          "question_id": "q_v3_step_1_52326",
+          "question_text": "Which action should be executed to initiate the task?",
+          "available_options": [
+            "APPROACH",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "APPROACH",
+          "laya_probabilities": {
+            "APPROACH": 0.713,
+            "STOP": 0.287
+          },
+          "laya_confidence": 0.1352,
+          "answer_confidence": 0.713,
+          "laya_latency_ms": 343.504,
+          "candidate_action": "APPROACH",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "APPROACH",
+          "final_decision_score": 0.8967,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 1,
+          "world_state_version_after": 2,
+          "timestamp_ns": 1791123852701779100,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.259,
+            "tau_jev_ms": 343.504,
+            "tau_validation_ms": 0.528,
+            "tau_ik_ms": 9.831,
+            "tau_sim_ms": 20.753,
+            "tau_verify_ms": 0.042,
+            "tau_total_ms": 375.232
+          }
+        },
+        {
+          "step_number": 2,
+          "question_id": "q_v3_step_2_52701",
+          "question_text": "Which action should be executed to grasp the object?",
+          "available_options": [
+            "GRASP",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "GRASP",
+          "laya_probabilities": {
+            "GRASP": 0.62,
+            "STOP": 0.38
+          },
+          "laya_confidence": 0.042,
+          "answer_confidence": 0.62,
+          "laya_latency_ms": 335.387,
+          "candidate_action": "GRASP",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "GRASP",
+          "final_decision_score": 0.9016,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 3,
+          "world_state_version_after": 4,
+          "timestamp_ns": 1791123853085839700,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.194,
+            "tau_jev_ms": 335.387,
+            "tau_validation_ms": 0.474,
+            "tau_ik_ms": 2.386,
+            "tau_sim_ms": 44.705,
+            "tau_verify_ms": 0.204,
+            "tau_total_ms": 383.649
+          }
+        },
+        {
+          "step_number": 3,
+          "question_id": "q_v3_step_3_53085",
+          "question_text": "Which recovery action should be considered?",
+          "available_options": [
+            "REPOSITION",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "REPOSITION",
+          "laya_probabilities": {
+            "REPOSITION": 0.5643,
+            "STOP": 0.4357
+          },
+          "laya_confidence": 0.012,
+          "answer_confidence": 0.5643,
+          "laya_latency_ms": 494.075,
+          "candidate_action": "REPOSITION",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "REPOSITION",
+          "final_decision_score": 0.7911,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 4,
+          "world_state_version_after": 5,
+          "timestamp_ns": 1791123853622480200,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.219,
+            "tau_jev_ms": 494.075,
+            "tau_validation_ms": 0.532,
+            "tau_ik_ms": 7.575,
+            "tau_sim_ms": 33.267,
+            "tau_verify_ms": 0.038,
+            "tau_total_ms": 536.113
+          }
+        },
+        {
+          "step_number": 4,
+          "question_id": "q_v3_step_4_53622",
+          "question_text": "Which action should be executed to transport the object?",
+          "available_options": [
+            "MOVE",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "MOVE",
+          "laya_probabilities": {
+            "MOVE": 0.7466,
+            "STOP": 0.2534
+          },
+          "laya_confidence": 0.1834,
+          "answer_confidence": 0.7466,
+          "laya_latency_ms": 401.517,
+          "candidate_action": "MOVE",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "MOVE",
+          "final_decision_score": 0.8758,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 5,
+          "world_state_version_after": 6,
+          "timestamp_ns": 1791123854083341200,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.161,
+            "tau_jev_ms": 401.517,
+            "tau_validation_ms": 0.343,
+            "tau_ik_ms": 8.02,
+            "tau_sim_ms": 50.839,
+            "tau_verify_ms": 0.041,
+            "tau_total_ms": 461.333
+          }
+        },
+        {
+          "step_number": 5,
+          "question_id": "q_v3_step_5_54083",
+          "question_text": "Which action should be executed to release the object?",
+          "available_options": [
+            "RELEASE",
+            "STOP"
+          ],
+          "laya_provider": "laya",
+          "laya_model": "laya-rl-agent",
+          "selected_option": "RELEASE",
+          "laya_probabilities": {
+            "RELEASE": 0.7549,
+            "STOP": 0.2451
+          },
+          "laya_confidence": 0.1966,
+          "answer_confidence": 0.7549,
+          "laya_latency_ms": 378.781,
+          "candidate_action": "RELEASE",
+          "deterministic_validation_result": "accepted",
+          "rejection_reasons": [],
+          "final_decision_action": "RELEASE",
+          "final_decision_score": 0.8181,
+          "execution_success": true,
+          "verification_success": true,
+          "world_state_version_before": 6,
+          "world_state_version_after": 7,
+          "timestamp_ns": 1791123854475792900,
+          "latency": {
+            "tau_nemotron_ms": 0.0,
+            "tau_context_ms": 0.157,
+            "tau_jev_ms": 378.781,
+            "tau_validation_ms": 0.294,
+            "tau_ik_ms": 0.0,
+            "tau_sim_ms": 12.592,
+            "tau_verify_ms": 0.173,
+            "tau_total_ms": 392.247
+          }
+        }
+      ],
+      "candidate_actions": [
+        "APPROACH",
+        "GRASP",
+        "REPOSITION",
+        "MOVE",
+        "RELEASE"
+      ],
+      "deterministic_actions": [
+        "APPROACH",
+        "GRASP",
+        "REPOSITION",
+        "MOVE",
+        "RELEASE"
+      ],
+      "execution_results": [
+        {
+          "step": 1,
+          "success": true
+        },
+        {
+          "step": 2,
+          "success": true
+        },
+        {
+          "step": 3,
+          "success": true
+        },
+        {
+          "step": 4,
+          "success": true
+        },
+        {
+          "step": 5,
+          "success": true
+        }
+      ],
+      "recovery_occurred": true,
+      "recovery_action": "REPOSITION",
+      "final_object_position": [
+        0.40844,
+        -0.15669,
+        0.19991
+      ],
+      "final_placement_error_m": 0.04412,
+      "placement_within_tolerance": true,
+      "final_task_status": "COMPLETED",
+      "completed": true,
+      "failure_classification": "NONE",
+      "latency_summary": {
+        "tau_nemotron_ms": 1596.857,
+        "tau_context_ms": 0.99,
+        "tau_jev_ms": 1953.264,
+        "tau_validation_ms": 2.171,
+        "tau_ik_ms": 27.812,
+        "tau_sim_ms": 162.156,
+        "tau_verify_ms": 0.498,
+        "tau_total_ms": 3747.288
+      }
+    }
+  ],
+  "metrics": {
+    "total_runs_attempted": 5,
+    "total_runs_completed": 5,
+    "task_success_rate": 1.0,
+    "recovery_success_rate": 1.0,
+    "action_sequence_match_rate": 1.0,
+    "laya_decision_agreement_rate": 1.0,
+    "deterministic_validation_agreement_rate": 1.0,
+    "final_placement_error_mean": 0.04412,
+    "final_placement_error_max": 0.04412,
+    "final_placement_error_std": 0.0,
+    "final_pose_spread_m": 0.0,
+    "failure_count": 0,
+    "unexpected_behavior_count": 0,
+    "failure_classification_counts": {
+      "NONE": 5
+    }
+  },
+  "known_limitations": [
+    "Local Laya probabilities and option selection may vary if sampling is stochastic; SarthiDecisionEngine guarantees physical safety regardless of chosen option.",
+    "Hosted Nemotron-3-Ultra latency and wording may fluctuate depending on Nebius cloud server load.",
+    "MuJoCo CPU physics is deterministic under identical initial states and Euler integration.",
+    "No physical robotic hardware tested; dynamics are modeled after the Franka Emika Panda in MuJoCo.",
+    "Five live runs provide a rigorous empirical sample for closed-loop validation, but do not represent infinite-sample statistical proof."
+  ],
+  "reproducibility_conclusion": "V3-9 Repeatability Validation complete: Task success rate = 100.0%, Recovery success rate = 100.0%, Placement error = 0.0441m (max: 0.0441m <= 0.060m). Deterministic safety constraints and physics replay exhibited 100% repeatability with zero safety bypasses."
+}

@@ -139,9 +139,9 @@ Detailed validation logs, contact telemetry, and IK convergence analyses are doc
 SĀRTHI is validated by an automated unit and integration test suite:
 
 ```text
-Ran 186 tests in 10.952s
+Ran 366 tests in 49.709s
 
-OK (186 passed, 0 failed, 0 errors)
+OK (366 passed, 0 failed, 0 errors)
 ```
 
 The test suite validates:
@@ -150,6 +150,11 @@ The test suite validates:
 - Live MuJoCo state extraction into canonical Pydantic schemas
 - Runtime action dispatch, physical verification, and dynamic recovery loops
 - Nebius Token Factory provider integration (both live and offline mocked modes)
+- Local Laya bounded decision integration and candidate action injection
+- Complete 12-dimensional physics validation (IK, contact, stability, timesteps)
+- Multi-run reproducibility and deterministic replay
+- 13 controlled failure scenarios and multi-tier resiliency fallback suite
+- Visual demonstration event streams and security sanitization
 
 ---
 
@@ -157,26 +162,32 @@ The test suite validates:
 
 All validation commands use already implemented scripts and configurations:
 
-### 1. Live Nemotron + MuJoCo Headless
-Runs the full closed-loop recovery with live Nebius Token Factory inference:
+### 1. Judge-Ready Visual Demonstration (Live Mode)
+Runs the complete cognitive-to-physical pipeline with real Nemotron, real local Laya, authoritative Decision Engine, MuJoCo Franka Panda, and dynamic obstacle recovery:
 ```powershell
-.venv\Scripts\python.exe scripts\mujoco\run_sarthi_mujoco_e2e.py --headless --output records\mujoco_e2e_telemetry.json
+.venv\Scripts\python.exe scripts\run_v3_11_demo.py --mode live
 ```
 
-### 2. Offline / Mock Validation
-Runs the identical closed-loop physics simulation and disturbance recovery using the deterministic offline mock provider (no API key required):
+### 2. Offline Replay Mode
+Plays back recorded telemetry offline without requiring API keys or active neural endpoints:
 ```powershell
-.venv\Scripts\python.exe scripts\mujoco\run_sarthi_mujoco_e2e.py --mock --output records\offline_telemetry.json
+.venv\Scripts\python.exe scripts\run_v3_11_demo.py --mode replay
 ```
 
-### 3. Interactive MuJoCo 3D Viewer
-Launches the interactive MuJoCo graphical window to visually inspect the Franka Panda arm, obstacle disturbance, and recovery trajectory:
+### 3. Local Web Dashboard
+Launches the lightweight, dependency-free visual presentation dashboard at `http://127.0.0.1:8080`:
 ```powershell
-.venv\Scripts\python.exe scripts\mujoco\run_sarthi_mujoco_e2e.py --viewer
+.venv\Scripts\python.exe scripts\run_v3_11_demo.py --serve --port 8080
 ```
 
-### 4. Full Automated Test Suite
-Executes all 186 unit and integration tests across the repository:
+### 4. Resiliency & Failure Fallback Demo
+Demonstrates deterministic recovery when decision services experience network or model timeouts:
+```powershell
+.venv\Scripts\python.exe scripts\run_v3_11_demo.py --mode failure
+```
+
+### 5. Full Automated Test Suite
+Executes all 366 unit, integration, and E2E recovery tests across the repository:
 ```powershell
 .venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
 ```

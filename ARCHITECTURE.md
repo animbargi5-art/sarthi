@@ -1,163 +1,218 @@
 # SĀRTHI — System Architecture Specification
 
-## 1. Executive Summary
-
-**SĀRTHI** is an adaptive Physical AI architecture designed for context-aware, responsibility-driven robotic decision-making under changing physical conditions. It is engineered to bridge the divide between high-level cognitive deliberation and real-time physical control.
-
-Robotic systems operating in dynamic, real-world environments continuously experience unpredictable physical disturbances:
-- Micro-slips and complete loss of grasp friction
-- External impact and unexpected collision forces
-- Mass and center-of-gravity shifts during payload manipulation
-- Visual occlusions and dynamic path blockages
-
-SĀRTHI addresses this challenge through a multi-tier, closed-loop architecture that combines **NVIDIA Nemotron** reasoning powered by **Nebius Token Factory** with the high-fidelity physics and sensor modeling of **NVIDIA Isaac Sim**.
+**Project Name:** SĀRTHI  
+**Tagline:** An adaptive Physical AI architecture for context-aware, responsibility-driven robotic decision-making under changing physical conditions.  
+**Target Event:** Nebius × NVIDIA Global AI Hackathon 2026  
+**Document Version:** Version: 3.0  
+**Status:** Draft — V3 Architecture Update  
 
 ---
 
-## 2. Multi-Tier Architecture Diagram
+## 1. Safety Architecture & Core Invariant
+
+The entire architectural framework of SĀRTHI V3 is built upon a non-negotiable principle of separation of concerns between artificial intelligence inference and physical execution authority:
+
+> [!IMPORTANT]
+> **Core System Invariant:**  
+> **"AI models propose or select bounded semantic candidates; deterministic software validates physical feasibility; only validated actions reach the robot controller."**  
+> **"Jev must never bypass deterministic safety validation."**
+
+No neural network or foundation model—including NVIDIA Nemotron and the planned Jev fast decision layer—commands robot motors directly or alters low-level control parameters without passing through the deterministic SĀRTHI Decision Engine.
+
+---
+
+## 2. Multi-Tier System Architecture
+
+SĀRTHI V3 organizes robotic intelligence into decoupled, highly specialized tiers. Each tier has a single, well-defined operational responsibility:
 
 ```mermaid
-graph TB
-    subgraph CognitiveTier ["1. Cognitive & Deliberative Tier (Cloud)"]
-        direction TB
-        NTF["Nebius Token Factory (Inference Infrastructure)"]
-        Nemotron["NVIDIA Nemotron (High-Reasoning Foundation Model)"]
-        PromptEngine["Structured Prompt & Context Synthesizer"]
-        
-        PromptEngine --> NTF
-        NTF --> Nemotron
-        Nemotron -->|Structured Recovery Plan (JSON)| PlanParser["Recovery Plan Parser & Verifier"]
+graph TD
+    User["Human Operator (Natural Language Instruction)"] --> TaskService["TaskUnderstandingService"]
+    
+    subgraph Tier1 ["Tier 1: Cognitive Task Understanding (Cloud Foundation Model)"]
+        TaskService --> NebiusClient["Nebius Token Factory API"]
+        NebiusClient --> Nemotron["NVIDIA Nemotron-3-Ultra"]
+        Nemotron --> TaskPlan["Structured TaskUnderstanding (Pydantic)"]
     end
-
-    subgraph OrchestrationTier ["2. Orchestration & Safety Tier (Backend Runtime)"]
-        direction TB
-        StateStore["Real-Time State Store & Telemetry Ring-Buffer"]
-        DisturbanceDetector["Disturbance & Anomaly Detector"]
-        SafetyValidator["Deterministic Kinematic & Boundary Validator"]
-        ActionCoordinator["Action & Motion Primitive Coordinator"]
-        
-        StateStore --> DisturbanceDetector
-        DisturbanceDetector -->|Anomaly Detected| PromptEngine
-        PlanParser --> SafetyValidator
-        SafetyValidator -->|Validated Trajectory/Command| ActionCoordinator
+    
+    subgraph Tier2 ["Tier 2: Fast Bounded Decision Layer (Planned Jev Provider)"]
+        TaskPlan --> ContextBuilder["Decision Context Builder"]
+        WorldStateObs["Physical WorldState"] --> ContextBuilder
+        ContextBuilder --> JevProvider["Jev Decision Provider (Bounded Evaluation)"]
+        JevProvider --> CandidateAction["Ranked Candidate Action Proposal"]
     end
-
-    subgraph SimulationTier ["3. Physical Perception & Simulation Tier (NVIDIA Isaac Sim)"]
-        direction TB
-        IsaacUSD["Omniverse USD Environment Stage"]
-        PhysX["PhysX 5 Dynamics & Contact Solver"]
-        VirtualRobot["Articulated Manipulator / Mobile Base"]
-        SensorRig["Synthetic Sensors (F/T, Joint Encoders, RGB-D)"]
-        DisturbanceEngine["Disturbance Injection Module"]
-        
-        IsaacUSD --> PhysX
-        PhysX --> VirtualRobot
-        VirtualRobot --> SensorRig
-        DisturbanceEngine -.->|Force / Inertia / Slip Impulse| VirtualRobot
+    
+    subgraph Tier3 ["Tier 3: Deterministic Physical Action Authority (SĀRTHI Decision Engine)"]
+        CandidateAction --> DecisionEngine["SĀRTHI Decision Engine"]
+        WorldStateObs --> DecisionEngine
+        DecisionEngine --> ConstraintFilter{"Deterministic Constraint Validation"}
+        ConstraintFilter -- "Violation (PATH_BLOCKED)" --> RejectHandler["Reject Action & Select REPOSITION"]
+        ConstraintFilter -- "Approved" --> ApprovedAction["Authorized Physical Action"]
+        RejectHandler --> ApprovedAction
     end
-
-    subgraph InterfaceTier ["4. Observability & Operator Tier"]
-        OperatorUI["Operator Console & Telemetry Visualizer"]
-        TelemetryWS["WebSocket Streamer (gRPC/WS)"]
+    
+    subgraph Tier4 ["Tier 4: Physical Execution & Articulation (MuJoCo Physics)"]
+        ApprovedAction --> Articulation["SarthiMuJoCoArticulation (DLS IK Solver)"]
+        Articulation --> FrankaArm["Franka Emika Panda Robot (7-DOF + Gripper)"]
+        FrankaArm --> MuJoCoSim["MuJoCo Rigid-Body Dynamics & Contacts"]
     end
-
-    %% Cross-Tier Connections
-    SensorRig -->|High-Frequency Telemetry (100Hz)| StateStore
-    ActionCoordinator -->|Joint Commands / Velocity Targets| VirtualRobot
-    StateStore --> TelemetryWS
-    TelemetryWS --> OperatorUI
-    OperatorUI -->|Manual Disturbance Trigger| DisturbanceEngine
+    
+    subgraph Tier5 ["Tier 5: Physical State Extraction & Verification"]
+        MuJoCoSim --> StateReader["SarthiMuJoCoStateReader"]
+        StateReader --> WorldStateObs
+        StateReader --> Verifier["Physical Outcome Verification"]
+        Verifier -- "Success" --> Completed["Stage Complete / Settle"]
+        Verifier -- "Disturbance / Incomplete" --> Reassess["Reassess & Trigger Recovery Loop"]
+    end
+    
+    subgraph Tier6 ["Tier 6: Physics Validation & Telemetry Framework"]
+        MuJoCoSim --> PhysicsValidator["12-Point Physics Validation Suite"]
+        Verifier --> TelemetrySink["Structured Telemetry Logger (records/)"]
+        ContextBuilder --> LatencyTracker["Decision Latency Benchmark Tracker"]
+    end
 ```
 
----
+### Decoupled Subsystem Responsibilities
+$$\text{Nemotron} \neq \text{Jev} \neq \text{Decision Engine} \neq \text{Robot Controller}$$
 
-## 3. Tier Specifications
-
-### 3.1 Tier 1: Cognitive & Deliberative Tier
-- **NVIDIA Nemotron:** Acts as the high-level cognitive reasoner. Rather than processing high-frequency raw sensor streams directly, Nemotron is invoked asynchronously when the system detects state deviations beyond nominal recovery thresholds.
-- **Nebius Token Factory:** Provides low-latency, high-throughput cloud inference for Nemotron. It ensures that complex robotic reasoning queries return within strict time budgets (< 400 ms), making cognitive recovery viable within interactive control horizons.
-- **Structured Schema Enforcement:** All outputs from Nemotron conform to strict JSON schemas defined in [BACKEND_SCHEMA.md](file:///d:/Projects/SĀRTHI/BACKEND_SCHEMA.md), including recovery primitives, grasp adjustments, and diagnostic rationale.
-
-### 3.2 Tier 2: Orchestration & Safety Tier
-- **State Store & Ring-Buffer:** Ingests 100 Hz robotic telemetry (joint positions, velocities, torques, end-effector pose, contact forces) and maintains a sliding temporal window of the last 3 seconds.
-- **Disturbance Detector:** Continuously compares observed state against nominal trajectory expectations. Detects anomalies such as unexpected force deltas ($> 15\text{ N}$), excessive tracking error ($> 0.05\text{ m}$), or zero-friction slip signatures.
-- **Deterministic Safety & Boundary Validator:** A strict, non-negotiable safety guardrail. Every plan generated by Nemotron is validated against:
-  - Joint limit and velocity limits
-  - Workspace bounding volume
-  - Self-collision and static environment collision geometry
-  - Emergency brake triggers if the LLM output is malformed or physically invalid
-
-### 3.3 Tier 3: Physical Perception & Simulation Tier (NVIDIA Isaac Sim)
-- **NVIDIA Isaac Sim:** Provides photorealistic rendering and physically accurate dynamics powered by NVIDIA PhysX 5.
-- **Synthetic Sensors:**
-  - 6-Axis Force/Torque Sensor at the end-effector.
-  - Articulated Joint Encoders (position, velocity, effort).
-  - Synthetic RGB-D Depth Camera for workspace clearance validation.
-- **Disturbance Injection Module:** A dedicated testing harness within Isaac Sim that can programmatically apply external impulses, simulate sudden mass increases, drop surface friction coefficients, or introduce dynamic obstacles.
-
-### 3.4 Tier 4: Observability & Operator Tier
-- **WebSocket Streaming:** Broadcasts real-time robot state, active disturbance status, and Nemotron reasoning logs to client interfaces.
-- **Operator Dashboard:** A production console providing live telemetry graphs, a 3D viewport, and interactive disturbance injection controls.
+- **NVIDIA Nemotron:** Interprets human language; extracts semantic goals and target entities; constructs high-level task plans.
+- **Jev (Planned):** Evaluates bounded, discrete decision questions; rapidly scores and ranks candidate choices based on structured context.
+- **SĀRTHI Decision Engine:** Sole physical action authority; enforces kinematic feasibility, clearance buffers, and safety guardrails; gates all actuation.
+- **Robot Controller / MuJoCo:** Computes numerical inverse kinematics; steps rigid-body dynamics; enforces physical contact mechanics.
 
 ---
 
-## 4. Disturbance Detection & Recovery Lifecycle
+## 3. Tier 1: Cognitive Task Understanding (NVIDIA Nemotron)
 
-```mermaid
-stateDiagram-v2
-    [*] --> NOMINAL_EXECUTION: Mission Start
-    
-    NOMINAL_EXECUTION --> DISTURBANCE_DETECTED: Anomaly Triggered (Force Delta / Slip / Error)
-    
-    state DISTURBANCE_DETECTED {
-        [*] --> FREEZE_HOLD: Engage Passive Brake / Position Hold
-        FREEZE_HOLD --> CLASSIFY_SEVERITY: Evaluate Telemetry Buffer
-    }
-    
-    DISTURBANCE_DETECTED --> RECOVERY_DELIBERATION: Severity > Local Threshold
-    DISTURBANCE_DETECTED --> NOMINAL_EXECUTION: False Alarm / Transient Settled
-    
-    state RECOVERY_DELIBERATION {
-        [*] --> COMPILE_PROMPT: Package Telemetry Snapshot
-        COMPILE_PROMPT --> NEBIUS_QUERY: Invoke Nemotron via Nebius Token Factory
-        NEBIUS_QUERY --> PARSE_OUTPUT: Receive Structured JSON Recovery Strategy
-        PARSE_OUTPUT --> SAFETY_CHECK: Deterministic Kinematic Validation
-    }
-    
-    RECOVERY_DELIBERATION --> EXECUTING_RECOVERY: Plan Validated
-    RECOVERY_DELIBERATION --> EMERGENCY_STOP: Validation Failed / Timeout
-    
-    state EXECUTING_RECOVERY {
-        [*] --> DISPATCH_PRIMITIVES: Execute Motion Primitives (e.g., Regrasp, Retract)
-        DISPATCH_PRIMITIVES --> VERIFY_STABILITY: Monitor Sensor Convergence
-    }
-    
-    EXECUTING_RECOVERY --> NOMINAL_EXECUTION: Stability Restored
-    EXECUTING_RECOVERY --> RECOVERY_DELIBERATION: Secondary Disturbance / Recovery Incomplete
-    EXECUTING_RECOVERY --> EMERGENCY_STOP: Safety Violation During Recovery
-    
-    EMERGENCY_STOP --> [*]: Safe State Reached (Operator Reset Required)
+### 3.1 Architectural Function
+NVIDIA Nemotron functions exclusively at the top cognitive tier. It transforms open-ended human natural-language commands into structured, type-safe semantic representations.
+
+### 3.2 Cloud Infrastructure: Nebius Token Factory
+Inference is served via **Nebius Token Factory**, providing an enterprise OpenAI-compatible REST endpoint:
+- **Model:** `nvidia/Nemotron-3-Ultra-550b-a55b`
+- **Endpoint:** `https://api.tokenfactory.nebius.com/v1`
+- **Output:** Pydantic-validated `TaskUnderstanding` specifying `target_object`, `destination_zone`, and expected high-level `required_actions` (e.g., `["APPROACH", "GRASP", "MOVE", "RELEASE"]`).
+
+### 3.3 Boundary Restrictions
+Nemotron does not observe raw numerical simulation state, joint vectors, or contact manifolds. It does not publish motor commands, modify `WorldState`, or interface directly with simulation controllers.
+
+---
+
+## 4. Tier 2: Fast Bounded Decision Layer (Jev — Planned)
+
+### 4.1 Architectural Function
+The **Jev Fast Decision Layer** is introduced in SĀRTHI V3 to provide fast, structured evaluation of discrete choices within a tightly bounded scope.
+
+Rather than invoking a large generative model for runtime re-planning, SĀRTHI formulates targeted decision questions:
+- *"Which recovery strategy is most appropriate for this disturbance?"*
+- *"Which candidate action should be prioritized for the current physical phase?"*
+- *"Does the current state deviation require initiating a recovery cycle?"*
+
+### 4.2 Compact Decision Context
+Raw simulation data is never forwarded to Jev. The `DecisionContextBuilder` extracts only the minimal semantic and physical signals required for the specific query:
+```text
+DecisionContext:
+├── task_goal: "Transfer red_object to blue_target"
+├── robot_phase: "POST_GRASP"
+├── gripper_state: "CLOSED_HOLDING"
+├── target_zone_coordinates: [0.40, -0.19, 0.12]
+├── active_constraints: ["PATH_BLOCKED: blocking_barrier_01"]
+├── clearance_delta_meters: -0.016
+└── last_action_outcome: "REJECTED_BLOCKED_PATH"
 ```
 
+### 4.3 Fallback & Zero Single-Point-of-Failure
+Jev is accessed strictly via an abstract adapter interface (`JevDecisionProvider`). If the Jev provider experiences network latency, timeout, or schema parsing issues, the system immediately reverts to the **deterministic Decision Engine's native candidate-ranking heuristics**. Jev is never a single point of failure.
+
 ---
 
-## 5. Latency Budget & Timing Constraints
+## 5. Tier 3: Deterministic Action Authority (SĀRTHI Decision Engine)
 
-To maintain robotic stability while executing cloud-assisted cognitive re-planning, the system adheres to the following latency budget:
+### 5.1 Sole Physical Authority
+The **SĀRTHI Decision Engine** is the ultimate gatekeeper of the robotic system. Every candidate action—whether proposed by a baseline heuristic, task runner sequence, or Jev decision—must receive explicit cryptographic/boolean authorization from the Decision Engine prior to actuation.
 
-| Operation | Target Latency | Max Allowable Latency | Fallback Behavior |
+### 5.2 Deterministic Constraint Checking
+Candidate actions are projected forward and evaluated against active constraints:
+1. **Workspace Bounding Envelopes:** Enforces physical Cartesian boundaries:
+   $$x \in [0.1, 0.8]\text{ m}, \quad y \in [-0.5, 0.5]\text{ m}, \quad z \in [0.0, 0.8]\text{ m}$$
+2. **Clearance & Obstacle Keepout:** Evaluates candidate paths against static and dynamic obstacle bounding boxes:
+   $$d_{\text{trajectory, obstacle}} \ge d_{\text{required\_clearance}} \quad (0.082\text{ m})$$
+   *(Validated benchmark: when obstacle enters transit path, minimum distance drops to $0.066\text{ m} < 0.082\text{ m}$, triggering deterministic rejection).*
+3. **Reachability & Joint Feasibility:** Validates that candidate targets fall within Franka Panda kinematic reach and do not require violating joint limits.
+4. **Grasp State Preconditions:** Enforces that `MOVE` actions cannot proceed unless `GRASP` contact stability is verified.
+
+### 5.3 Autonomous Recovery Selection
+When an action is rejected, the Decision Engine does not trigger a blind E-Stop. It analyzes the constraint failure and selects a compliant recovery primitive (e.g., `REPOSITION` to elevate the payload to $z \approx 0.35\text{ m}$, passing safely over the obstacle).
+
+---
+
+## 6. Tier 4: Physical Execution & Articulation (MuJoCo)
+
+### 6.1 Robotic Platform & Physics Engine
+- **Physics Engine:** MuJoCo (`mujoco >= 3.1.0`), providing deterministic multi-body dynamics, smooth contact resolution, and collision geometry.
+- **Robot Model:** Franka Emika Panda (7-DOF arm, 2-finger parallel gripper) sourced from MuJoCo Menagerie.
+
+### 6.2 Numerical Articulation
+`SarthiMuJoCoArticulation` executes approved Cartesian waypoints using Damped-Least-Squares (DLS) differential inverse kinematics:
+$$\Delta q = J^T (J J^T + \lambda^2 I)^{-1} \Delta x$$
+with joint-limit clipping, velocity limit enforcement, and controlled simulation stepping.
+
+---
+
+## 7. Tier 5: Physical State Extraction & Verification
+
+### 7.1 Real-Time State Reader
+`SarthiMuJoCoStateReader` translates active MuJoCo simulation structures (`mjModel` and `mjData`) directly into canonical SĀRTHI Pydantic models:
+- Real-time end-effector pose, joint positions, and joint velocities.
+- Object spatial coordinates and bounding geometry.
+- Live contact manifold analysis: determining whether fingers contact the object, normal force magnitude, and slip status.
+
+### 7.2 Post-Condition Physical Verification
+Every action execution is verified against empirical simulation metrics:
+- **`APPROACH_VERIFIED`:** End-effector reached pre-grasp standoff within tolerance.
+- **`GRASP_VERIFIED`:** Parallel jaws clamped object with persistent normal forces.
+- **`REPOSITION_VERIFIED`:** Object elevated above clearance altitude ($z \ge 0.33\text{ m}$).
+- **`FINAL_PLACEMENT_VERIFIED`:** Object settled in target zone (validated benchmark error $0.0535\text{ m} \le 0.0600\text{ m}$).
+
+---
+
+## 8. Tier 6: Physics Validation Framework (New V3 Requirement)
+
+The Physics Validation Framework establishes rigorous, repeatable benchmarks across 12 physical dimensions:
+
+1. **Timestep Sensitivity:** Testing trajectory convergence across multiple physics timestep configurations ($dt \in \{0.001\text{s}, 0.002\text{s}, 0.005\text{s}\}$).
+2. **Joint-Limit Correctness:** Verifying that commanded motions never violate Franka Panda mechanical limits.
+3. **Joint Velocity Limits:** Ensuring commanded velocities remain within configured safety thresholds.
+4. **EE Trajectory Repeatability:** Measuring Cartesian trajectory variance across identical repeated runs.
+5. **Contact Stability:** Verifying sustained grasp firmness over extended simulation holding periods.
+6. **Object Placement Repeatability:** Quantifying final resting position variance across repeated release trials.
+7. **Collision/Clearance Validation:** Confirming deterministic rejection when obstacle clearance falls below threshold.
+8. **Gravity & Settling Behavior:** Validating Newtonian settling acceleration and resting stability.
+9. **IK Convergence Residuals:** Measuring numerical error and iteration counts of the DLS solver.
+10. **Numerical Stability:** Detecting and preventing non-finite floating-point states (`NaN`, `Inf`).
+11. **Deterministic Replay:** Validating identical execution trajectories from identical random seeds and initial states.
+12. **Physics Regression Testing:** Automatically benchmarking code changes against established baseline telemetry.
+
+---
+
+## 9. Latency Instrumentation & Decision Performance
+
+SĀRTHI V3 instruments every stage of the decision and actuation lifecycle to empirically quantify the latency profile:
+
+| Stage Metric | Latency Symbol | Measured Interval | Target Profile |
 | :--- | :--- | :--- | :--- |
-| **Telemetry Ingestion & Filtering** | 10 ms | 20 ms | Drop frame, use prior state |
-| **Disturbance Anomaly Detection** | 5 ms | 15 ms | Conservative brake trigger |
-| **Robot Position Hold (Local)** | 2 ms | 5 ms | Local hardware safety clamp |
-| **Nemotron Cloud Inference (Nebius)** | 250 ms | 450 ms | Local canned recovery primitive |
-| **Deterministic Kinematic Check** | 3 ms | 10 ms | Reject plan, enter safe stop |
-| **Total Recovery Deliberation Horizon**| **~270 ms**| **< 500 ms**| Safe descent / passive hold |
+| **Task Understanding** | $\tau_{\text{nemotron}}$ | Command reception $\to$ `TaskUnderstanding` | Cloud LLM roundtrip (instrumented via Nebius) |
+| **Context Synthesis** | $\tau_{\text{context}}$ | WorldState inspection $\to$ `DecisionContext` | Local in-process memory aggregation |
+| **Fast Bounded Decision** | $\tau_{\text{jev}}$ | Bounded query dispatch $\to$ `JevDecision` | Fast structured decision latency (to be benchmarked) |
+| **Constraint Validation** | $\tau_{\text{validation}}$ | Candidate evaluation $\to$ `Decision` | Sub-millisecond deterministic calculation |
+| **Trajectory Synthesis** | $\tau_{\text{ik}}$ | Cartesian target $\to$ joint path interpolation | DLS differential IK stepping |
+| **Physical Actuation** | $\tau_{\text{sim}}$ | Joint torque execution in MuJoCo | Physics step loop duration |
+| **Physical Verification** | $\tau_{\text{verify}}$ | Post-motion inspection $\to$ verification status | In-process `mjData` extraction |
 
 ---
 
-## 6. Security, Isolation, and Robustness
+## 10. Security Boundaries & Isolation
 
-1. **Air-Gapped Actuation Separation:** The LLM never writes directly to hardware motor registers. It generates high-level symbolic recovery primitives (`regrasp`, `replan_trajectory`, `adjust_compliance`), which are translated into joint trajectories by deterministic local controllers.
-2. **Deterministic Fallbacks:** If the Nebius Token Factory endpoint is unreachable or response latency exceeds 500 ms, the system automatically falls back to deterministic rule-based compliance routines or triggers a controlled gravitational stop.
-3. **Environment & Secret Protection:** All API credentials for Nebius Token Factory are managed via strictly scoped environment variables, isolated from client-facing services.
+1. **Strict Credential Isolation:** All authentication keys (`NEBIUS_API_KEY`, Jev credentials) are loaded from process environment variables and scrubbed from all logs, exceptions, and telemetry records.
+2. **Air-Gapped Actuation:** The physical simulation runs locally via direct Python C-bindings. Neither cloud models nor third-party decision layers have network access to simulator controls.
+3. **Graceful Degradation:** Any network failure, schema error, or API timeout results in an immediate transition to a local deterministic position hold or controlled gravitational stop.

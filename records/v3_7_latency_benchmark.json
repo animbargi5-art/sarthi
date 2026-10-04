@@ -1,0 +1,420 @@
+{
+  "project": "S\u0100RTHI",
+  "phase": "V3-7",
+  "timestamp_iso": "2026-10-04T13:50:30.216222+00:00",
+  "hardware_environment": {
+    "os": "Windows 11",
+    "cpu": "Intel / AMD x86_64",
+    "python_version": "3.10.11",
+    "simulator": "MuJoCo 3.14.0 (CPU / RK4)",
+    "local_laya_url": "http://127.0.0.1:8000",
+    "local_laya_model": "typed-decisions",
+    "nemotron_endpoint": "https://api.tokenfactory.nebius.com/v1",
+    "nemotron_model": "nvidia/Nemotron-3-Ultra-550b-a55b"
+  },
+  "benchmarks": {
+    "benchmark_a_offline": {
+      "benchmark_name": "Benchmark_A_Offline_Deterministic",
+      "description": "Deterministic overhead measurement with mock providers and Franka Panda tabletop scenario",
+      "num_runs": 5,
+      "statistics": {
+        "tau_nemotron_ms": {
+          "count": 5.0,
+          "min": 0.111,
+          "max": 0.264,
+          "mean": 0.157,
+          "median": 0.124,
+          "p95": 0.246
+        },
+        "tau_context_ms": {
+          "count": 5.0,
+          "min": 0.889,
+          "max": 1.354,
+          "mean": 1.066,
+          "median": 1.043,
+          "p95": 1.309
+        },
+        "tau_jev_ms": {
+          "count": 5.0,
+          "min": 0.048,
+          "max": 0.062,
+          "mean": 0.053,
+          "median": 0.053,
+          "p95": 0.06
+        },
+        "tau_validation_ms": {
+          "count": 5.0,
+          "min": 1.217,
+          "max": 1.537,
+          "mean": 1.319,
+          "median": 1.237,
+          "p95": 1.504
+        },
+        "tau_ik_ms": {
+          "count": 5.0,
+          "min": 20.479,
+          "max": 30.385,
+          "mean": 24.89,
+          "median": 25.468,
+          "p95": 29.51
+        },
+        "tau_sim_ms": {
+          "count": 5.0,
+          "min": 140.303,
+          "max": 146.224,
+          "mean": 143.209,
+          "median": 143.35,
+          "p95": 145.684
+        },
+        "tau_verify_ms": {
+          "count": 5.0,
+          "min": 0.383,
+          "max": 0.584,
+          "mean": 0.489,
+          "median": 0.508,
+          "p95": 0.575
+        },
+        "tau_total_ms": {
+          "count": 5.0,
+          "min": 167.119,
+          "max": 179.314,
+          "mean": 174.286,
+          "median": 175.01,
+          "p95": 178.472
+        }
+      },
+      "raw_runs": [
+        {
+          "tau_nemotron_ms": 0.172,
+          "tau_context_ms": 1.354,
+          "tau_jev_ms": 0.05,
+          "tau_validation_ms": 1.23,
+          "tau_ik_ms": 26.011,
+          "tau_sim_ms": 142.642,
+          "tau_verify_ms": 0.508,
+          "tau_total_ms": 175.01
+        },
+        {
+          "tau_nemotron_ms": 0.111,
+          "tau_context_ms": 0.889,
+          "tau_jev_ms": 0.048,
+          "tau_validation_ms": 1.217,
+          "tau_ik_ms": 30.385,
+          "tau_sim_ms": 143.35,
+          "tau_verify_ms": 0.431,
+          "tau_total_ms": 179.314
+        },
+        {
+          "tau_nemotron_ms": 0.124,
+          "tau_context_ms": 1.127,
+          "tau_jev_ms": 0.053,
+          "tau_validation_ms": 1.537,
+          "tau_ik_ms": 22.105,
+          "tau_sim_ms": 146.224,
+          "tau_verify_ms": 0.54,
+          "tau_total_ms": 174.882
+        },
+        {
+          "tau_nemotron_ms": 0.116,
+          "tau_context_ms": 1.043,
+          "tau_jev_ms": 0.062,
+          "tau_validation_ms": 1.237,
+          "tau_ik_ms": 20.479,
+          "tau_sim_ms": 140.303,
+          "tau_verify_ms": 0.584,
+          "tau_total_ms": 167.119
+        },
+        {
+          "tau_nemotron_ms": 0.264,
+          "tau_context_ms": 0.916,
+          "tau_jev_ms": 0.053,
+          "tau_validation_ms": 1.373,
+          "tau_ik_ms": 25.468,
+          "tau_sim_ms": 143.524,
+          "tau_verify_ms": 0.383,
+          "tau_total_ms": 175.105
+        }
+      ]
+    },
+    "benchmark_b_local_laya": {
+      "benchmark_name": "Benchmark_B_Local_Laya",
+      "description": "Direct latency measurement of local Laya server across 20 bounded decisions",
+      "num_runs": 20,
+      "statistics": {
+        "tau_jev_ms": {
+          "count": 20.0,
+          "min": 263.766,
+          "max": 361.286,
+          "mean": 304.287,
+          "median": 302.109,
+          "p95": 356.058
+        }
+      },
+      "raw_runs": [
+        {
+          "query_index": 1,
+          "question_type": "APPROACH",
+          "selected_option": "APPROACH",
+          "tau_jev_ms": 355.783,
+          "reported_latency_ms": 355.69
+        },
+        {
+          "query_index": 2,
+          "question_type": "GRASP",
+          "selected_option": "GRASP",
+          "tau_jev_ms": 263.766,
+          "reported_latency_ms": 263.67
+        },
+        {
+          "query_index": 3,
+          "question_type": "REPOSITION",
+          "selected_option": "REPOSITION",
+          "tau_jev_ms": 333.49,
+          "reported_latency_ms": 333.41
+        },
+        {
+          "query_index": 4,
+          "question_type": "MOVE",
+          "selected_option": "MOVE",
+          "tau_jev_ms": 267.296,
+          "reported_latency_ms": 267.2
+        },
+        {
+          "query_index": 5,
+          "question_type": "RELEASE",
+          "selected_option": "RELEASE",
+          "tau_jev_ms": 288.067,
+          "reported_latency_ms": 287.97
+        },
+        {
+          "query_index": 6,
+          "question_type": "APPROACH",
+          "selected_option": "APPROACH",
+          "tau_jev_ms": 296.282,
+          "reported_latency_ms": 296.19
+        },
+        {
+          "query_index": 7,
+          "question_type": "GRASP",
+          "selected_option": "GRASP",
+          "tau_jev_ms": 279.578,
+          "reported_latency_ms": 279.49
+        },
+        {
+          "query_index": 8,
+          "question_type": "REPOSITION",
+          "selected_option": "REPOSITION",
+          "tau_jev_ms": 302.998,
+          "reported_latency_ms": 302.92
+        },
+        {
+          "query_index": 9,
+          "question_type": "MOVE",
+          "selected_option": "MOVE",
+          "tau_jev_ms": 317.202,
+          "reported_latency_ms": 317.12
+        },
+        {
+          "query_index": 10,
+          "question_type": "RELEASE",
+          "selected_option": "RELEASE",
+          "tau_jev_ms": 291.119,
+          "reported_latency_ms": 291.04
+        },
+        {
+          "query_index": 11,
+          "question_type": "APPROACH",
+          "selected_option": "APPROACH",
+          "tau_jev_ms": 302.814,
+          "reported_latency_ms": 302.74
+        },
+        {
+          "query_index": 12,
+          "question_type": "GRASP",
+          "selected_option": "GRASP",
+          "tau_jev_ms": 301.404,
+          "reported_latency_ms": 301.31
+        },
+        {
+          "query_index": 13,
+          "question_type": "REPOSITION",
+          "selected_option": "REPOSITION",
+          "tau_jev_ms": 293.316,
+          "reported_latency_ms": 293.24
+        },
+        {
+          "query_index": 14,
+          "question_type": "MOVE",
+          "selected_option": "MOVE",
+          "tau_jev_ms": 324.732,
+          "reported_latency_ms": 324.65
+        },
+        {
+          "query_index": 15,
+          "question_type": "RELEASE",
+          "selected_option": "RELEASE",
+          "tau_jev_ms": 300.681,
+          "reported_latency_ms": 300.59
+        },
+        {
+          "query_index": 16,
+          "question_type": "APPROACH",
+          "selected_option": "APPROACH",
+          "tau_jev_ms": 304.303,
+          "reported_latency_ms": 304.21
+        },
+        {
+          "query_index": 17,
+          "question_type": "GRASP",
+          "selected_option": "GRASP",
+          "tau_jev_ms": 280.877,
+          "reported_latency_ms": 280.74
+        },
+        {
+          "query_index": 18,
+          "question_type": "REPOSITION",
+          "selected_option": "REPOSITION",
+          "tau_jev_ms": 304.039,
+          "reported_latency_ms": 303.96
+        },
+        {
+          "query_index": 19,
+          "question_type": "MOVE",
+          "selected_option": "MOVE",
+          "tau_jev_ms": 316.705,
+          "reported_latency_ms": 316.62
+        },
+        {
+          "query_index": 20,
+          "question_type": "RELEASE",
+          "selected_option": "RELEASE",
+          "tau_jev_ms": 361.286,
+          "reported_latency_ms": 361.21
+        }
+      ]
+    },
+    "benchmark_c_full_live_v3": {
+      "benchmark_name": "Benchmark_C_Full_Live_V3",
+      "description": "Full cognitive-to-physical closed-loop benchmark with real Nemotron, real local Laya, and Franka Panda MuJoCo recovery",
+      "num_runs": 5,
+      "statistics": {
+        "tau_nemotron_ms": {
+          "count": 5.0,
+          "min": 1328.91,
+          "max": 7602.175,
+          "mean": 3530.179,
+          "median": 2758.214,
+          "p95": 6955.573
+        },
+        "tau_context_ms": {
+          "count": 5.0,
+          "min": 0.281,
+          "max": 1.064,
+          "mean": 0.841,
+          "median": 0.963,
+          "p95": 1.046
+        },
+        "tau_jev_ms": {
+          "count": 5.0,
+          "min": 269.064,
+          "max": 1992.195,
+          "mean": 1487.541,
+          "median": 1719.383,
+          "p95": 1958.604
+        },
+        "tau_validation_ms": {
+          "count": 5.0,
+          "min": 0.212,
+          "max": 2.359,
+          "mean": 1.743,
+          "median": 2.047,
+          "p95": 2.329
+        },
+        "tau_ik_ms": {
+          "count": 5.0,
+          "min": 0.0,
+          "max": 34.171,
+          "mean": 25.871,
+          "median": 31.865,
+          "p95": 33.791
+        },
+        "tau_sim_ms": {
+          "count": 5.0,
+          "min": 1.001,
+          "max": 196.607,
+          "mean": 141.466,
+          "median": 169.03,
+          "p95": 194.658
+        },
+        "tau_verify_ms": {
+          "count": 5.0,
+          "min": 0.045,
+          "max": 0.556,
+          "mean": 0.394,
+          "median": 0.442,
+          "p95": 0.548
+        },
+        "tau_total_ms": {
+          "count": 5.0,
+          "min": 3381.951,
+          "max": 9514.63,
+          "mean": 5191.327,
+          "median": 4641.275,
+          "p95": 8603.346
+        }
+      },
+      "raw_runs": [
+        {
+          "tau_nemotron_ms": 2758.214,
+          "tau_context_ms": 0.963,
+          "tau_jev_ms": 1992.195,
+          "tau_validation_ms": 2.047,
+          "tau_ik_ms": 31.865,
+          "tau_sim_ms": 169.03,
+          "tau_verify_ms": 0.515,
+          "tau_total_ms": 4958.212
+        },
+        {
+          "tau_nemotron_ms": 1328.91,
+          "tau_context_ms": 1.064,
+          "tau_jev_ms": 1824.241,
+          "tau_validation_ms": 2.359,
+          "tau_ik_ms": 34.171,
+          "tau_sim_ms": 186.864,
+          "tau_verify_ms": 0.442,
+          "tau_total_ms": 3381.951
+        },
+        {
+          "tau_nemotron_ms": 7602.175,
+          "tau_context_ms": 0.922,
+          "tau_jev_ms": 1719.383,
+          "tau_validation_ms": 1.887,
+          "tau_ik_ms": 32.272,
+          "tau_sim_ms": 153.829,
+          "tau_verify_ms": 0.413,
+          "tau_total_ms": 9514.63
+        },
+        {
+          "tau_nemotron_ms": 4369.166,
+          "tau_context_ms": 0.281,
+          "tau_jev_ms": 269.064,
+          "tau_validation_ms": 0.212,
+          "tau_ik_ms": 0.0,
+          "tau_sim_ms": 1.001,
+          "tau_verify_ms": 0.045,
+          "tau_total_ms": 4641.275
+        },
+        {
+          "tau_nemotron_ms": 1592.43,
+          "tau_context_ms": 0.974,
+          "tau_jev_ms": 1632.824,
+          "tau_validation_ms": 2.211,
+          "tau_ik_ms": 31.047,
+          "tau_sim_ms": 196.607,
+          "tau_verify_ms": 0.556,
+          "tau_total_ms": 3460.567
+        }
+      ]
+    }
+  }
+}

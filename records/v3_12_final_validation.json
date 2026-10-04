@@ -1,0 +1,138 @@
+{
+  "audit_version": "V3-12",
+  "audit_name": "SĀRTHI V3-12 Final Validation & Submission Readiness",
+  "timestamp_iso": "2026-10-04T21:12:00Z",
+  "overall_status": "SUBMISSION READY",
+  "architectural_invariants": {
+    "invariant_statement": "AI models propose or select bounded semantic candidates; deterministic software validates physical feasibility; only validated actions reach the robot controller.",
+    "nemotron_role": "Natural-language task understanding and semantic intent extraction only (non-authoritative)",
+    "laya_role": "Bounded fast candidate proposal generation via /v1/systemone (non-authoritative)",
+    "candidate_injector_role": "Explicit proposal-to-candidate boundary and validation barrier",
+    "decision_engine_role": "SOLE DETERMINISTIC PHYSICAL ACTION AUTHORITY (evaluates 10 constraints)",
+    "mujoco_role": "Physics simulation and closed-loop state verification (Franka Emika Panda 7-DOF)",
+    "ui_dashboard_role": "Read-only telemetry presentation and observation layer (zero actuation endpoints)",
+    "ai_to_robot_bypasses": 0,
+    "unsafe_executions": 0
+  },
+  "test_suite": {
+    "total_tests": 366,
+    "passed": 366,
+    "failed": 0,
+    "errors": 0,
+    "runtime_seconds": 49.709,
+    "status": "PASS"
+  },
+  "live_physical_ai_e2e": {
+    "pipeline": "Real Nemotron + Real Local Laya + SarthiDecisionEngine + MuJoCo Franka Panda",
+    "human_instruction": "Move the red object to the blue target.",
+    "task_completed": true,
+    "recovery_success": true,
+    "disturbance_type": "PATH_BLOCKED",
+    "obstacle_id": "blocking_barrier_01",
+    "direct_move_rejected": true,
+    "rejection_reason": "BlockedPath: Obstacle intersects trajectory corridor",
+    "laya_selected_recovery": "REPOSITION",
+    "recovery_elevation_m": 0.35,
+    "final_position": {
+      "x": 0.40380346457768695,
+      "y": -0.15781403012224496,
+      "z": 0.19998187391812827
+    },
+    "target_position": {
+      "x": 0.4,
+      "y": -0.2,
+      "z": 0.171
+    },
+    "placement_error_m": 0.05132,
+    "tolerance_m": 0.06,
+    "gripper_state": "OPEN",
+    "object_state": "FREE (Settled in Target Zone)",
+    "ai_to_robot_bypass_count": 0,
+    "status": "PASS"
+  },
+  "replay_validation": {
+    "source_telemetry": "records/v3_11_demo_telemetry.json",
+    "total_events": 19,
+    "events_chronological": true,
+    "disturbance_visible": true,
+    "blocked_path_rejection_visible": true,
+    "recovery_visible": true,
+    "final_placement_visible": true,
+    "mode_label": "REPLAY MODE — OFFLINE DEMONSTRATION",
+    "claims_live_execution": false,
+    "external_api_required": false,
+    "status": "PASS"
+  },
+  "security_audit": {
+    "files_scanned": 156,
+    "real_credentials_detected": 0,
+    "env_file_git_tracked": false,
+    "env_example_has_only_placeholders": true,
+    "telemetry_sanitized": true,
+    "ui_contains_no_secrets": true,
+    "status": "PASS"
+  },
+  "hackathon_requirements": {
+    "nvidia_open_source_model": {
+      "model_name": "NVIDIA Nemotron-3-Ultra",
+      "model_id": "nvidia/nemotron-3-ultra-550b-a55b",
+      "status": "PASS"
+    },
+    "nebius": {
+      "platform": "Nebius Token Factory",
+      "endpoint": "https://api.tokenfactory.nebius.com/v1",
+      "status": "PASS"
+    },
+    "license": {
+      "license_type": "MIT License",
+      "file_present": true,
+      "status": "PASS"
+    },
+    "readme": {
+      "explains_nemotron": true,
+      "explains_nebius": true,
+      "explains_laya": true,
+      "explains_decision_engine": true,
+      "status": "PASS"
+    },
+    "feedback": {
+      "file_present": true,
+      "submission_ready": true,
+      "status": "PASS"
+    },
+    "physical_ai": {
+      "physics_engine": "MuJoCo",
+      "robot": "Franka Emika Panda 7-DOF",
+      "disturbance_recovery_demonstrated": true,
+      "status": "PASS"
+    },
+    "demo_evidence": {
+      "live_record_path": "records/v3_11_demo_telemetry.json",
+      "status": "PASS"
+    }
+  },
+  "submission_checklist": [
+    {"item": "Architecture", "status": "PASS"},
+    {"item": "Nemotron", "status": "PASS"},
+    {"item": "Nebius Token Factory", "status": "PASS"},
+    {"item": "Local Laya", "status": "PASS"},
+    {"item": "Decision Engine", "status": "PASS"},
+    {"item": "MuJoCo", "status": "PASS"},
+    {"item": "Physical recovery", "status": "PASS"},
+    {"item": "Physics validation", "status": "PASS"},
+    {"item": "Reproducibility", "status": "PASS"},
+    {"item": "Resiliency", "status": "PASS"},
+    {"item": "Visual demo", "status": "PASS"},
+    {"item": "Replay", "status": "PASS"},
+    {"item": "Security", "status": "PASS"},
+    {"item": "README", "status": "PASS"},
+    {"item": "LICENSE", "status": "PASS"},
+    {"item": "FEEDBACK", "status": "PASS"},
+    {"item": "Tests", "status": "PASS"}
+  ],
+  "known_limitations": [
+    "Tabletop rigid-body pick-and-place manipulation scenario.",
+    "Validated in high-fidelity rigid-body physics simulation (MuJoCo 3.1+); physical hardware deployment on a real Franka Panda arm is planned for future post-hackathon work.",
+    "Disturbance currently evaluated using dynamic geometric path obstruction (PATH_BLOCKED)."
+  ]
+}

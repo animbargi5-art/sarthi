@@ -1,0 +1,26 @@
+{
+  "question_id": "q_v3_4_recovery_01",
+  "question_type": "RECOVERY_SELECTION",
+  "available_options": [
+    "REPOSITION",
+    "STOP"
+  ],
+  "selected_option": "REPOSITION",
+  "confidence": 0.0023,
+  "answer_confidence": 0.5284,
+  "probabilities": {
+    "REPOSITION": 0.5284,
+    "STOP": 0.4716
+  },
+  "latency_ms": 495.95,
+  "success": true,
+  "provider_status": "AVAILABLE",
+  "provider_name": "laya",
+  "model_version": "laya-rl-agent",
+  "error_category": null,
+  "error_message": null,
+  "timestamp_ns": 1791046312348709400,
+  "safety_boundary_verified": true,
+  "physical_action_executed": false,
+  "nemotron_called": false
+}

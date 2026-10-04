@@ -1,0 +1,359 @@
+{
+  "report_id": "rep_v3_10_1791126367",
+  "timestamp_iso": "2026-10-04T15:06:07.092935+00:00",
+  "total_scenarios_evaluated": 13,
+  "total_passed": 13,
+  "total_failed": 0,
+  "unsafe_executions_count": 0,
+  "ai_to_robot_bypasses_count": 0,
+  "fallback_hierarchy_description": [
+    "Tier 1: Valid AI proposal -> Deterministic validation -> Execute only if valid",
+    "Tier 2: AI unavailable/rejected -> Deterministic recovery candidate -> Deterministic validation -> Execute only if valid",
+    "Tier 3: No valid candidate -> Deterministic SAFE STOP (zero velocity, hold joint positions)"
+  ],
+  "scenarios": [
+    {
+      "failure_id": "rec_tier2_scen_01",
+      "failure_type": "LAYA_TIMEOUT",
+      "source_component": "UnknownProvider",
+      "detected_at_stage": "DECISION_PROPOSAL",
+      "recovery_strategy": "DETERMINISTIC_RECOVERY",
+      "fallback_action": "REPOSITION",
+      "validation_result": "fallback",
+      "execution_result": null,
+      "verification_result": null,
+      "final_status": "COMPLETED",
+      "rejection_reason": [
+        "AIProposalUnavailable: Query timed out after 500ms"
+      ],
+      "safe_stop": false,
+      "provenance": {
+        "strategy": "deterministic_recovery",
+        "action_id": "act_tier2_reposition_scen_01",
+        "action_type": "REPOSITION"
+      },
+      "metadata": {},
+      "timestamp_ns": 1791126365369809300
+    },
+    {
+      "failure_id": "rec_tier2_scen_02",
+      "failure_type": "LAYA_CONNECTION_FAILURE",
+      "source_component": "UnknownProvider",
+      "detected_at_stage": "DECISION_PROPOSAL",
+      "recovery_strategy": "DETERMINISTIC_RECOVERY",
+      "fallback_action": "REPOSITION",
+      "validation_result": "fallback",
+      "execution_result": null,
+      "verification_result": null,
+      "final_status": "COMPLETED",
+      "rejection_reason": [
+        "AIProposalUnavailable: Connection refused at 127.0.0.1:8000"
+      ],
+      "safe_stop": false,
+      "provenance": {
+        "strategy": "deterministic_recovery",
+        "action_id": "act_tier2_reposition_scen_02",
+        "action_type": "REPOSITION"
+      },
+      "metadata": {},
+      "timestamp_ns": 1791126365370476700
+    },
+    {
+      "failure_id": "rec_tier2_scen_03",
+      "failure_type": "MALFORMED_LAYA_RESPONSE",
+      "source_component": "UnknownProvider",
+      "detected_at_stage": "DECISION_PROPOSAL",
+      "recovery_strategy": "DETERMINISTIC_RECOVERY",
+      "fallback_action": "REPOSITION",
+      "validation_result": "fallback",
+      "execution_result": null,
+      "verification_result": null,
+      "final_status": "COMPLETED",
+      "rejection_reason": [
+        "AIProposalUnavailable: Invalid JSON: missing selected_option"
+      ],
+      "safe_stop": false,
+      "provenance": {
+        "strategy": "deterministic_recovery",
+        "action_id": "act_tier2_reposition_scen_03",
+        "action_type": "REPOSITION"
+      },
+      "metadata": {},
+      "timestamp_ns": 1791126365371093000
+    },
+    {
+      "failure_id": "rec_tier2_scen_04",
+      "failure_type": "LAYA_OUT_OF_BOUNDS",
+      "source_component": "mock_failing_laya",
+      "detected_at_stage": "CANDIDATE_INJECTION",
+      "recovery_strategy": "DETERMINISTIC_RECOVERY",
+      "fallback_action": "REPOSITION",
+      "validation_result": "fallback",
+      "execution_result": null,
+      "verification_result": null,
+      "final_status": "COMPLETED",
+      "rejection_reason": [
+        "Selected option 'TELEPORT_OBJECT' is not in question's available options: ['REPOSITION', 'STOP']"
+      ],
+      "safe_stop": false,
+      "provenance": {
+        "strategy": "deterministic_recovery",
+        "action_id": "act_tier2_reposition_scen_04",
+        "action_type": "REPOSITION"
+      },
+      "metadata": {},
+      "timestamp_ns": 1791126365372219100
+    },
+    {
+      "failure_id": "scen_05_nemotron_timeout",
+      "failure_type": "NEMOTRON_TIMEOUT",
+      "source_component": "NebiusNemotronProvider",
+      "detected_at_stage": "TASK_UNDERSTANDING",
+      "recovery_strategy": "SAFE_ABORT",
+      "fallback_action": null,
+      "validation_result": "rejected",
+      "execution_result": null,
+      "verification_result": null,
+      "final_status": "STOPPED_SAFELY",
+      "rejection_reason": [
+        "CognitiveTimeout: Nebius API timed out after 3000ms"
+      ],
+      "safe_stop": true,
+      "provenance": {
+        "provider": "NebiusNemotronProvider",
+        "error": "Nebius API timed out after 3000ms"
+      },
+      "metadata": {},
+      "timestamp_ns": 1791126365372219100
+    },
+    {
+      "failure_id": "scen_06_nemotron_malformed",
+      "failure_type": "NEMOTRON_MALFORMED",
+      "source_component": "NebiusNemotronProvider",
+      "detected_at_stage": "TASK_UNDERSTANDING",
+      "recovery_strategy": "SAFE_ABORT",
+      "fallback_action": null,
+      "validation_result": "rejected",
+      "execution_result": null,
+      "verification_result": null,
+      "final_status": "STOPPED_SAFELY",
+      "rejection_reason": [
+        "CognitiveValidationError: Schema validation failed: missing required action_sequence"
+      ],
+      "safe_stop": true,
+      "provenance": {
+        "provider": "NebiusNemotronProvider",
+        "error": "Schema validation failed: missing required action_sequence"
+      },
+      "metadata": {},
+      "timestamp_ns": 1791126365372219100
+    },
+    {
+      "failure_id": "stop_tier3_scen_07",
+      "failure_type": "DETERMINISTIC_VALIDATION_REJECTION",
+      "source_component": "laya-unsafe-test",
+      "detected_at_stage": "DETERMINISTIC_VALIDATION",
+      "recovery_strategy": "SAFE_STOP",
+      "fallback_action": "STOP",
+      "validation_result": "rejected",
+      "execution_result": null,
+      "verification_result": null,
+      "final_status": "STOPPED_SAFELY",
+      "rejection_reason": [
+        "BlockedPath: Obstacle 'blocking_barrier_01' intersects trajectory (min distance 0.000m < required 0.090m)"
+      ],
+      "safe_stop": true,
+      "provenance": {
+        "strategy": "safe_stop",
+        "reason": "No safe candidates"
+      },
+      "metadata": {},
+      "timestamp_ns": 1791126365373353200
+    },
+    {
+      "failure_id": "scen_08_ik_failure",
+      "failure_type": "IK_FAILURE",
+      "source_component": "DLS_IK_Solver",
+      "detected_at_stage": "IK_SOLVER",
+      "recovery_strategy": "SAFE_STOP",
+      "fallback_action": "STOP",
+      "validation_result": "rejected",
+      "execution_result": {
+        "success": false,
+        "failure_reason": "IK failed to converge for APPROACH target. Dist: 5.1200m"
+      },
+      "verification_result": false,
+      "final_status": "STOPPED_SAFELY",
+      "rejection_reason": [
+        "IK failed to converge for APPROACH target. Dist: 5.1200m"
+      ],
+      "safe_stop": true,
+      "provenance": {
+        "ik_error": "IK failed to converge for APPROACH target. Dist: 5.1200m"
+      },
+      "metadata": {},
+      "timestamp_ns": 1791126366080920300
+    },
+    {
+      "failure_id": "scen_09_exec_failure",
+      "failure_type": "PHYSICS_EXECUTION_FAILURE",
+      "source_component": "SarthiMuJoCoRuntime",
+      "detected_at_stage": "PHYSICAL_EXECUTION",
+      "recovery_strategy": "SAFE_STOP",
+      "fallback_action": "STOP",
+      "validation_result": "rejected",
+      "execution_result": {
+        "success": false,
+        "failure_reason": "Missing target_object_id for GRASP."
+      },
+      "verification_result": false,
+      "final_status": "STOPPED_SAFELY",
+      "rejection_reason": [
+        "Missing target_object_id for GRASP."
+      ],
+      "safe_stop": true,
+      "provenance": {
+        "execution_error": "Missing target_object_id for GRASP."
+      },
+      "metadata": {},
+      "timestamp_ns": 1791126366415485700
+    },
+    {
+      "failure_id": "scen_10_verify_failure",
+      "failure_type": "VERIFICATION_FAILURE",
+      "source_component": "SarthiMuJoCoVerifier",
+      "detected_at_stage": "VERIFICATION",
+      "recovery_strategy": "SAFE_STOP",
+      "fallback_action": "STOP",
+      "validation_result": "rejected",
+      "execution_result": null,
+      "verification_result": false,
+      "final_status": "STOPPED_SAFELY",
+      "rejection_reason": [
+        "Physical state failed expected outcome verification (not holding target payload)"
+      ],
+      "safe_stop": true,
+      "provenance": {
+        "verifier": "SarthiMuJoCoVerifier"
+      },
+      "metadata": {},
+      "timestamp_ns": 1791126366765686500
+    },
+    {
+      "failure_id": "scen_11_grasp_failure",
+      "failure_type": "OBJECT_GRASP_FAILURE",
+      "source_component": "SarthiMuJoCoStateReader",
+      "detected_at_stage": "STATE_OBSERVATION",
+      "recovery_strategy": "SAFE_STOP",
+      "fallback_action": "STOP",
+      "validation_result": "rejected",
+      "execution_result": null,
+      "verification_result": false,
+      "final_status": "STOPPED_SAFELY",
+      "rejection_reason": [
+        "Payload grasp failed: target object not secured in gripper"
+      ],
+      "safe_stop": true,
+      "provenance": {
+        "grasped": false
+      },
+      "metadata": {},
+      "timestamp_ns": 1791126367083932400
+    },
+    {
+      "failure_id": "rec_tier1_scen_12",
+      "failure_type": "PATH_BLOCKED_DISTURBANCE",
+      "source_component": "laya",
+      "detected_at_stage": "DECISION_PROPOSAL",
+      "recovery_strategy": "PROPOSAL_ACCEPTED",
+      "fallback_action": null,
+      "validation_result": "accepted",
+      "execution_result": null,
+      "verification_result": null,
+      "final_status": "COMPLETED",
+      "rejection_reason": [],
+      "safe_stop": false,
+      "provenance": {
+        "provider": "laya",
+        "selected_option": "REPOSITION",
+        "candidate_action": "REPOSITION",
+        "candidate_source": "bounded_laya_decision",
+        "validation_result": "accepted",
+        "rejection_reasons": [],
+        "confidence": 0.85,
+        "answer_confidence": 0.85,
+        "timestamp_ns": 1791126367091937200
+      },
+      "metadata": {},
+      "timestamp_ns": 1791126367091937200
+    },
+    {
+      "failure_id": "rec_tier2_scen_13",
+      "failure_type": "MULTI_FAILURE_CASCADE",
+      "source_component": "UnknownProvider",
+      "detected_at_stage": "DECISION_PROPOSAL",
+      "recovery_strategy": "DETERMINISTIC_RECOVERY",
+      "fallback_action": "REPOSITION",
+      "validation_result": "fallback",
+      "execution_result": null,
+      "verification_result": null,
+      "final_status": "COMPLETED",
+      "rejection_reason": [
+        "AIProposalUnavailable: Laya timed out during cascade test"
+      ],
+      "safe_stop": false,
+      "provenance": {
+        "strategy": "deterministic_recovery",
+        "action_id": "act_tier2_reposition_scen_13",
+        "action_type": "REPOSITION"
+      },
+      "metadata": {},
+      "timestamp_ns": 1791126367092935600
+    }
+  ],
+  "live_validation_summary": {
+    "live_a_normal": {
+      "validation_id": "LIVE_A_NORMAL",
+      "completed": true,
+      "final_task_status": "COMPLETED",
+      "placement_error_m": 0.05335,
+      "within_tolerance": true,
+      "steps_count": 5,
+      "recovery_occurred": false
+    },
+    "live_b_path_blocked": {
+      "validation_id": "LIVE_B_PATH_BLOCKED",
+      "completed": true,
+      "final_task_status": "COMPLETED",
+      "placement_error_m": 0.05275,
+      "within_tolerance": true,
+      "steps_count": 5,
+      "recovery_occurred": true
+    },
+    "live_c_laya_fallback": {
+      "validation_id": "LIVE_C_LAYA_FALLBACK",
+      "completed": true,
+      "final_task_status": "COMPLETED",
+      "placement_error_m": 0.05453,
+      "within_tolerance": true,
+      "steps_count": 5,
+      "fallback_engaged_steps_count": 5,
+      "safe_fallback_executed": true
+    },
+    "live_d_deterministic_rejection": {
+      "validation_id": "LIVE_D_DETERMINISTIC_REJECTION",
+      "unsafe_candidate_rejected": true,
+      "selected_action": "STOP",
+      "safe_halt_or_recovery": true,
+      "ai_to_robot_bypass_occurred": false
+    }
+  },
+  "secret_sanitization_verified": "[REDACTED]",
+  "known_limitations": [
+    "Local Laya sampling or timeout parameters depend on local host resources.",
+    "Hosted Nemotron availability relies on Nebius [REDACTED] Factory network status.",
+    "Simulation dynamics use MuJoCo CPU physics; physical hardware backlash/slip is not modeled.",
+    "Safe STOP halts motion immediately; dynamic momentum is absorbed via joint position holding."
+  ],
+  "resiliency_conclusion": "All 13 failure scenarios successfully passed safety invariant testing. Zero unsafe executions occurred. Zero AI-to-robot bypasses detected. SarthiDecisionEngine preserved 100% deterministic physical authority."
+}

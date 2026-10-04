@@ -1,0 +1,632 @@
+{
+  "suite_id": "suite_v3_8_1791122579",
+  "timestamp": "2026-10-04T14:02:59.552522+00:00",
+  "environment": {
+    "os": "windows",
+    "engine": "mujoco",
+    "dof": 7
+  },
+  "robot_model": "Franka Emika Panda (7-DOF)",
+  "mujoco_version": "3.14.0",
+  "scenario_id": "tabletop_pick_and_place_mvp",
+  "total_validations": 12,
+  "passed_validations": 12,
+  "failed_validations": 0,
+  "all_passed": true,
+  "results": {
+    "timestep_sensitivity": {
+      "validation_id": "val_phys_01_1791122571",
+      "dimension": "timestep_sensitivity",
+      "scenario": "tabletop_pick_and_place_mvp",
+      "parameter_configuration": {
+        "tested_timesteps": [
+          0.0019,
+          0.002,
+          0.0025
+        ],
+        "baseline_timestep": 0.002
+      },
+      "run_count": 3,
+      "pass_fail": true,
+      "measured_values": {
+        "dt_0.0019s": {
+          "timestep_s": 0.0019,
+          "completed": true,
+          "placement_error_m": 0.0253,
+          "tolerance_m": 0.06,
+          "stable": true,
+          "within_tolerance": true
+        },
+        "dt_0.0020s": {
+          "timestep_s": 0.002,
+          "completed": true,
+          "placement_error_m": 0.0176,
+          "tolerance_m": 0.06,
+          "stable": true,
+          "within_tolerance": true
+        },
+        "dt_0.0025s": {
+          "timestep_s": 0.0025,
+          "completed": true,
+          "placement_error_m": 0.0108,
+          "tolerance_m": 0.06,
+          "stable": true,
+          "within_tolerance": true
+        }
+      },
+      "expected_bounds": {
+        "placement_tolerance_m": 0.06,
+        "stability_required": true
+      },
+      "failure_reasons": [],
+      "reproducibility_information": {
+        "mujoco_version": "3.14.0",
+        "integrator": "Euler"
+      },
+      "timestamp": "2026-10-04T14:02:51.360128+00:00",
+      "metadata": {
+        "description": "Evaluates task completion and placement accuracy across timestep variations."
+      }
+    },
+    "joint_limits": {
+      "validation_id": "val_phys_02_1791122571",
+      "dimension": "joint_limits",
+      "scenario": "tabletop_pick_and_place_mvp",
+      "parameter_configuration": {
+        "joint_count": 7,
+        "limits": [
+          [
+            -2.8973,
+            2.8973
+          ],
+          [
+            -1.7628,
+            1.7628
+          ],
+          [
+            -2.8973,
+            2.8973
+          ],
+          [
+            -3.0718,
+            -0.0698
+          ],
+          [
+            -2.8973,
+            2.8973
+          ],
+          [
+            -0.0175,
+            3.7525
+          ],
+          [
+            -2.8973,
+            2.8973
+          ]
+        ]
+      },
+      "run_count": 1,
+      "pass_fail": true,
+      "measured_values": {
+        "min_observed_rad": [
+          -0.055,
+          -0.8642,
+          -0.412,
+          -3.0087,
+          -0.0761,
+          1.9154,
+          -1.2455
+        ],
+        "max_observed_rad": [
+          0.2927,
+          -0.1113,
+          0.3096,
+          -2.5446,
+          0.2665,
+          2.441,
+          -0.4798
+        ],
+        "nominal_violations": 0,
+        "boundary_target_within_limits": true,
+        "clamping_protection_active": true
+      },
+      "expected_bounds": {
+        "max_limit_violations": 0,
+        "clamping_active": true
+      },
+      "failure_reasons": [],
+      "reproducibility_information": {
+        "robot": "Franka Emika Panda (7-DOF)",
+        "limit_source": "panda.xml"
+      },
+      "timestamp": "2026-10-04T14:02:51.860294+00:00",
+      "metadata": {
+        "description": "Verifies that joint limits are strictly maintained during all motions."
+      }
+    },
+    "joint_velocities": {
+      "validation_id": "val_phys_03_1791122572",
+      "dimension": "joint_velocities",
+      "scenario": "tabletop_pick_and_place_mvp",
+      "parameter_configuration": {
+        "max_allowed_velocity_rad_s": 2.5
+      },
+      "run_count": 1,
+      "pass_fail": true,
+      "measured_values": {
+        "max_observed_velocity_rad_s": 0.8346,
+        "joint_peak_velocities_rad_s": [
+          0.18,
+          0.2544,
+          0.1914,
+          0.8346,
+          0.1794,
+          0.7011,
+          0.1147
+        ],
+        "violation_detected": false
+      },
+      "expected_bounds": {
+        "max_velocity_rad_s": 2.5
+      },
+      "failure_reasons": [],
+      "reproducibility_information": {
+        "controller": "interpolated joint position"
+      },
+      "timestamp": "2026-10-04T14:02:52.382384+00:00",
+      "metadata": {
+        "description": "Validates dynamic velocity limits during execution."
+      }
+    },
+    "end_effector_repeatability": {
+      "validation_id": "val_phys_04_1791122574",
+      "dimension": "end_effector_repeatability",
+      "scenario": "tabletop_pick_and_place_mvp",
+      "parameter_configuration": {
+        "runs": 5,
+        "target_position": {
+          "x": 0.25,
+          "y": 0.15,
+          "z": 0.2
+        }
+      },
+      "run_count": 5,
+      "pass_fail": true,
+      "measured_values": {
+        "mean_position_m": [
+          0.26585,
+          0.15718,
+          0.22408
+        ],
+        "max_deviation_m": 0.0,
+        "per_axis_max_dev_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "individual_runs": [
+          [
+            0.26585,
+            0.15718,
+            0.22408
+          ],
+          [
+            0.26585,
+            0.15718,
+            0.22408
+          ],
+          [
+            0.26585,
+            0.15718,
+            0.22408
+          ],
+          [
+            0.26585,
+            0.15718,
+            0.22408
+          ],
+          [
+            0.26585,
+            0.15718,
+            0.22408
+          ]
+        ]
+      },
+      "expected_bounds": {
+        "max_repeatability_error_m": 0.002
+      },
+      "failure_reasons": [],
+      "reproducibility_information": {
+        "deterministic_seeds": true
+      },
+      "timestamp": "2026-10-04T14:02:54.120343+00:00",
+      "metadata": {
+        "description": "Measures repeatability of end-effector targeting across repeated resets."
+      }
+    },
+    "contact_stability": {
+      "validation_id": "val_phys_05_1791122574",
+      "dimension": "contact_stability",
+      "scenario": "tabletop_pick_and_place_mvp",
+      "parameter_configuration": {
+        "grasp_threshold_m": 0.07,
+        "gripper_open_threshold_m": 0.06
+      },
+      "run_count": 1,
+      "pass_fail": true,
+      "measured_values": {
+        "post_grasp_contact": true,
+        "post_grasp_grasped": true,
+        "transport_reposition_grasped": true,
+        "transport_move_grasped": true,
+        "post_release_grasped": false,
+        "post_release_gripper_open": true,
+        "transport_elevation_z_m": 0.3231
+      },
+      "expected_bounds": {
+        "grasp_retention": true,
+        "transport_retention": true,
+        "clean_release": true
+      },
+      "failure_reasons": [],
+      "reproducibility_information": {
+        "gripper": "Franka Panda 2-finger parallel jaw"
+      },
+      "timestamp": "2026-10-04T14:02:54.648899+00:00",
+      "metadata": {
+        "description": "Evaluates grasp security, transport retention, and clean release dynamics."
+      }
+    },
+    "placement_repeatability": {
+      "validation_id": "val_phys_06_1791122576",
+      "dimension": "placement_repeatability",
+      "scenario": "tabletop_pick_and_place_mvp",
+      "parameter_configuration": {
+        "runs": 3,
+        "target_zone": {
+          "x": 0.4,
+          "y": -0.2,
+          "tolerance_radius": 0.06
+        }
+      },
+      "run_count": 3,
+      "pass_fail": true,
+      "measured_values": {
+        "mean_placement_error_m": 0.0176,
+        "max_placement_error_m": 0.0176,
+        "std_placement_error_m": 0.0,
+        "success_rate": 1.0,
+        "placement_errors_m": [
+          0.0176,
+          0.0176,
+          0.0176
+        ],
+        "final_positions": [
+          [
+            0.404,
+            -0.1829,
+            0.1998
+          ],
+          [
+            0.404,
+            -0.1829,
+            0.1998
+          ],
+          [
+            0.404,
+            -0.1829,
+            0.1998
+          ]
+        ]
+      },
+      "expected_bounds": {
+        "target_tolerance_m": 0.06,
+        "required_success_rate": 1.0
+      },
+      "failure_reasons": [],
+      "reproducibility_information": {
+        "runs": 3
+      },
+      "timestamp": "2026-10-04T14:02:56.158373+00:00",
+      "metadata": {
+        "description": "Evaluates horizontal placement repeatability across multiple full runs."
+      }
+    },
+    "collision_clearance": {
+      "validation_id": "val_phys_07_1791122576",
+      "dimension": "collision_clearance",
+      "scenario": "tabletop_pick_and_place_mvp",
+      "parameter_configuration": {
+        "obstacle_pos": {
+          "x": 0.325,
+          "y": -0.025,
+          "z": 0.12
+        },
+        "obstacle_dims": {
+          "length_x": 0.06,
+          "width_y": 0.06,
+          "height_z": 0.08
+        },
+        "required_clearance_m": 0.03
+      },
+      "run_count": 1,
+      "pass_fail": true,
+      "measured_values": {
+        "direct_trajectory_rejected": true,
+        "rejection_reasons": [
+          "BlockedPath: Obstacle 'blocking_barrier_01' intersects trajectory (min distance 0.066m < required 0.082m)"
+        ],
+        "elevated_transit_z_m": 0.3468,
+        "obstacle_top_z_m": 0.16,
+        "vertical_clearance_m": 0.1868,
+        "obstacle_collision_detected": false
+      },
+      "expected_bounds": {
+        "direct_rejected": true,
+        "min_clearance_m": 0.03,
+        "collisions_allowed": 0
+      },
+      "failure_reasons": [],
+      "reproducibility_information": {
+        "obstacle_id": "blocking_barrier_01"
+      },
+      "timestamp": "2026-10-04T14:02:56.626933+00:00",
+      "metadata": {
+        "description": "Validates obstacle keepout rejection and elevated collision-free recovery."
+      }
+    },
+    "gravity_settling": {
+      "validation_id": "val_phys_08_1791122577",
+      "dimension": "gravity_settling",
+      "scenario": "tabletop_pick_and_place_mvp",
+      "parameter_configuration": {
+        "settle_ticks": 150,
+        "timestep_s": 0.002
+      },
+      "run_count": 1,
+      "pass_fail": true,
+      "measured_values": {
+        "pre_settle_position": {
+          "x": 0.404,
+          "y": -0.1829,
+          "z": 0.1998
+        },
+        "post_settle_position": {
+          "x": 0.404,
+          "y": -0.1829,
+          "z": 0.1998
+        },
+        "settling_displacement_m": 1e-05,
+        "residual_linear_velocity_m_s": 0.00021,
+        "residual_angular_velocity_rad_s": 0.00675,
+        "final_target_distance_m": 0.0176
+      },
+      "expected_bounds": {
+        "max_velocity_m_s": 0.05,
+        "max_displacement_m": 0.05,
+        "target_tolerance_m": 0.06
+      },
+      "failure_reasons": [],
+      "reproducibility_information": {
+        "contact_solver": "MuJoCo standard friction"
+      },
+      "timestamp": "2026-10-04T14:02:57.112679+00:00",
+      "metadata": {
+        "description": "Verifies natural settling under gravity and contact friction post-release."
+      }
+    },
+    "ik_convergence": {
+      "validation_id": "val_phys_09_1791122577",
+      "dimension": "ik_convergence",
+      "scenario": "tabletop_pick_and_place_mvp",
+      "parameter_configuration": {
+        "waypoint_count": 6,
+        "ik_method": "Damped Least Squares"
+      },
+      "run_count": 6,
+      "pass_fail": true,
+      "measured_values": {
+        "reachable_count": 5,
+        "reachable_converged": 5,
+        "waypoint_results": {
+          "standoff_red_object": {
+            "target": {
+              "x": 0.25,
+              "y": 0.15,
+              "z": 0.35
+            },
+            "converged": true,
+            "final_error_m": 0.00273,
+            "finite_values": true
+          },
+          "grasp_red_object": {
+            "target": {
+              "x": 0.25,
+              "y": 0.15,
+              "z": 0.2
+            },
+            "converged": true,
+            "final_error_m": 0.00374,
+            "finite_values": true
+          },
+          "reposition_clearance": {
+            "target": {
+              "x": 0.25,
+              "y": 0.15,
+              "z": 0.351
+            },
+            "converged": true,
+            "final_error_m": 0.00265,
+            "finite_values": true
+          },
+          "standoff_blue_target": {
+            "target": {
+              "x": 0.4,
+              "y": -0.2,
+              "z": 0.35
+            },
+            "converged": true,
+            "final_error_m": 0.00347,
+            "finite_values": true
+          },
+          "placement_blue_target": {
+            "target": {
+              "x": 0.4,
+              "y": -0.2,
+              "z": 0.2
+            },
+            "converged": true,
+            "final_error_m": 0.00282,
+            "finite_values": true
+          },
+          "unreachable_extreme": {
+            "target": {
+              "x": 2.5,
+              "y": 2.5,
+              "z": 2.5
+            },
+            "converged": false,
+            "final_error_m": 3.34833,
+            "finite_values": true
+          }
+        }
+      },
+      "expected_bounds": {
+        "reachable_convergence_rate": 1.0,
+        "unreachable_safely_rejected": true
+      },
+      "failure_reasons": [],
+      "reproducibility_information": {
+        "damping": 0.05
+      },
+      "timestamp": "2026-10-04T14:02:57.494717+00:00",
+      "metadata": {
+        "description": "Evaluates numerical convergence and failure safety of DLS inverse kinematics."
+      }
+    },
+    "numerical_stability": {
+      "validation_id": "val_phys_10_1791122578",
+      "dimension": "numerical_stability",
+      "scenario": "tabletop_pick_and_place_mvp",
+      "parameter_configuration": {
+        "stages_monitored": 7,
+        "limits": {
+          "max_qpos": 50.0,
+          "max_qvel": 50.0
+        }
+      },
+      "run_count": 1,
+      "pass_fail": true,
+      "measured_values": {
+        "instability_events": 0,
+        "nan_events": 0,
+        "explosion_events": 0
+      },
+      "expected_bounds": {
+        "max_instability_events": 0
+      },
+      "failure_reasons": [],
+      "reproducibility_information": {
+        "floating_point": "IEEE 754 float64"
+      },
+      "timestamp": "2026-10-04T14:02:58.037175+00:00",
+      "metadata": {
+        "description": "Monitors physics state arrays for NaN, Inf, and numerical explosions."
+      }
+    },
+    "deterministic_replay": {
+      "validation_id": "val_phys_11_1791122579",
+      "dimension": "deterministic_replay",
+      "scenario": "tabletop_pick_and_place_mvp",
+      "parameter_configuration": {
+        "replay_tolerance_m": 0.0001
+      },
+      "run_count": 2,
+      "pass_fail": true,
+      "measured_values": {
+        "action_sequence_matched": true,
+        "run1_actions": [
+          "APPROACH",
+          "GRASP",
+          "REPOSITION",
+          "MOVE",
+          "RELEASE"
+        ],
+        "run2_actions": [
+          "APPROACH",
+          "GRASP",
+          "REPOSITION",
+          "MOVE",
+          "RELEASE"
+        ],
+        "run1_final_position": [
+          0.404,
+          -0.1829,
+          0.19981
+        ],
+        "run2_final_position": [
+          0.404,
+          -0.1829,
+          0.19981
+        ],
+        "euclidean_distance_difference_m": 0.0
+      },
+      "expected_bounds": {
+        "max_position_difference_m": 0.0001,
+        "actions_identical": true
+      },
+      "failure_reasons": [],
+      "reproducibility_information": {
+        "simulation_engine": "MuJoCo deterministic CPU runtime"
+      },
+      "timestamp": "2026-10-04T14:02:59.040212+00:00",
+      "metadata": {
+        "description": "Verifies bitwise/numerical reproducibility of execution across identical runs."
+      }
+    },
+    "physics_regression": {
+      "validation_id": "val_phys_12_1791122579",
+      "dimension": "physics_regression",
+      "scenario": "tabletop_pick_and_place_mvp",
+      "parameter_configuration": {
+        "baseline_scenario": "V3-6/V3-7 Franka Panda Pick-and-Place Recovery"
+      },
+      "run_count": 1,
+      "pass_fail": true,
+      "measured_values": {
+        "milestones": {
+          "approach_success": true,
+          "grasp_success": true,
+          "path_blocked_detected": true,
+          "direct_move_rejected": true,
+          "reposition_success": true,
+          "move_success": true,
+          "release_success": true,
+          "placement_verified": true
+        },
+        "all_milestones_passed": true,
+        "final_placement_error_m": 0.0176,
+        "tolerance_radius_m": 0.06
+      },
+      "expected_bounds": {
+        "required_milestones": 8,
+        "all_passed": true
+      },
+      "failure_reasons": [],
+      "reproducibility_information": {
+        "baseline_version": "V3-7"
+      },
+      "timestamp": "2026-10-04T14:02:59.548504+00:00",
+      "metadata": {
+        "description": "Verifies that all 8 established stages of pick-and-place recovery complete without regression."
+      }
+    }
+  },
+  "known_limitations": [
+    "Simulation is tabletop manipulation on a simulated Franka Emika Panda 7-DOF arm; no real hardware tested.",
+    "Dynamic disturbance currently models a static bounding obstacle injected along the direct trajectory.",
+    "Simulated gripper utilizes MuJoCo split tendon actuation; tactile sensor array feedback is simplified to contact point detection.",
+    "Execution is purely headless CPU physics; GPU acceleration or Isaac Sim rendering are not required in this phase."
+  ],
+  "regression_conclusion": "All 12 physics validation dimensions PASSED successfully. Simulation dynamics, IK convergence, joint safety limits, collision avoidance, and deterministic replay remain 100% stable with zero regressions."
+}

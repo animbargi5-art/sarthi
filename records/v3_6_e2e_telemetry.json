@@ -1,0 +1,220 @@
+{
+  "run_id": "v3_run_1791120723283",
+  "human_instruction": "Move the red object to the blue target.",
+  "task_understanding": {
+    "task_id": "task_7a4f9e2b1c8d",
+    "objective": "Relocate red object to blue target zone",
+    "target_object": "red_object",
+    "target_location": "blue_target",
+    "required_actions": [
+      "APPROACH",
+      "GRASP",
+      "MOVE",
+      "RELEASE"
+    ],
+    "constraints": [
+      "avoid_collisions",
+      "respect_workspace_limits",
+      "maintain_grasp_stability"
+    ],
+    "success_conditions": [
+      "red_object_at_blue_target",
+      "gripper_released"
+    ],
+    "confidence": 0.95,
+    "reasoning_summary": "Instruction clearly identifies a source entity (red object) and a destination (blue target) implying a standard pick-and-place manipulation sequence."
+  },
+  "context_id": "q_v3_step_5_26972",
+  "decision_question": {
+    "question_id": "q_v3_step_5_26972",
+    "question_text": "Which action should be executed to release the object?",
+    "available_options": [
+      "RELEASE",
+      "STOP"
+    ]
+  },
+  "laya_provider": "laya",
+  "laya_model": "laya-rl-agent",
+  "selected_option": "RELEASE",
+  "laya_probabilities": {
+    "RELEASE": 0.7549,
+    "STOP": 0.2451
+  },
+  "laya_confidence": 0.1966,
+  "answer_confidence": 0.7549,
+  "candidate_action": "RELEASE",
+  "deterministic_validation_result": "accepted",
+  "rejection_reasons": [],
+  "final_decision": {
+    "action": "RELEASE",
+    "score": 0.8181
+  },
+  "execution_result": {
+    "success": true,
+    "verified": true
+  },
+  "recovery_events": [
+    {
+      "step": 3,
+      "event": "DISTURBANCE_RECOVERY_REPOSITION",
+      "validation_result": "accepted",
+      "score": 0.7911
+    }
+  ],
+  "final_task_status": "COMPLETED",
+  "final_world_state_version": 7,
+  "completed": true,
+  "latency_markers": {
+    "cognition_latency_ms": 1864.8440837860107,
+    "total_run_duration_ms": 4012.990713119507,
+    "steps_executed": 5.0
+  },
+  "timestamp_iso": "2026-10-04T13:32:07.296688+00:00",
+  "steps": [
+    {
+      "step_number": 1,
+      "question_id": "q_v3_step_1_25148",
+      "question_text": "Which action should be executed to initiate the task?",
+      "available_options": [
+        "APPROACH",
+        "STOP"
+      ],
+      "laya_provider": "laya",
+      "laya_model": "laya-rl-agent",
+      "selected_option": "APPROACH",
+      "laya_probabilities": {
+        "APPROACH": 0.713,
+        "STOP": 0.287
+      },
+      "laya_confidence": 0.1352,
+      "answer_confidence": 0.713,
+      "laya_latency_ms": 393.45550537109375,
+      "candidate_action": "APPROACH",
+      "deterministic_validation_result": "accepted",
+      "rejection_reasons": [],
+      "final_decision_action": "APPROACH",
+      "final_decision_score": 0.8967,
+      "execution_success": true,
+      "verification_success": true,
+      "world_state_version_before": 1,
+      "world_state_version_after": 2,
+      "timestamp_ns": 1791120725581944600
+    },
+    {
+      "step_number": 2,
+      "question_id": "q_v3_step_2_25581",
+      "question_text": "Which action should be executed to grasp the object?",
+      "available_options": [
+        "GRASP",
+        "STOP"
+      ],
+      "laya_provider": "laya",
+      "laya_model": "laya-rl-agent",
+      "selected_option": "GRASP",
+      "laya_probabilities": {
+        "GRASP": 0.62,
+        "STOP": 0.38
+      },
+      "laya_confidence": 0.042,
+      "answer_confidence": 0.62,
+      "laya_latency_ms": 362.6384735107422,
+      "candidate_action": "GRASP",
+      "deterministic_validation_result": "accepted",
+      "rejection_reasons": [],
+      "final_decision_action": "GRASP",
+      "final_decision_score": 0.9016,
+      "execution_success": true,
+      "verification_success": true,
+      "world_state_version_before": 3,
+      "world_state_version_after": 4,
+      "timestamp_ns": 1791120725983729600
+    },
+    {
+      "step_number": 3,
+      "question_id": "q_v3_step_3_25983",
+      "question_text": "Which recovery action should be considered?",
+      "available_options": [
+        "REPOSITION",
+        "STOP"
+      ],
+      "laya_provider": "laya",
+      "laya_model": "laya-rl-agent",
+      "selected_option": "REPOSITION",
+      "laya_probabilities": {
+        "REPOSITION": 0.5643,
+        "STOP": 0.4357
+      },
+      "laya_confidence": 0.012,
+      "answer_confidence": 0.5643,
+      "laya_latency_ms": 495.6073760986328,
+      "candidate_action": "REPOSITION",
+      "deterministic_validation_result": "accepted",
+      "rejection_reasons": [],
+      "final_decision_action": "REPOSITION",
+      "final_decision_score": 0.7911,
+      "execution_success": true,
+      "verification_success": true,
+      "world_state_version_before": 4,
+      "world_state_version_after": 5,
+      "timestamp_ns": 1791120726524996900
+    },
+    {
+      "step_number": 4,
+      "question_id": "q_v3_step_4_26524",
+      "question_text": "Which action should be executed to transport the object?",
+      "available_options": [
+        "MOVE",
+        "STOP"
+      ],
+      "laya_provider": "laya",
+      "laya_model": "laya-rl-agent",
+      "selected_option": "MOVE",
+      "laya_probabilities": {
+        "MOVE": 0.7466,
+        "STOP": 0.2534
+      },
+      "laya_confidence": 0.1834,
+      "answer_confidence": 0.7466,
+      "laya_latency_ms": 386.86656951904297,
+      "candidate_action": "MOVE",
+      "deterministic_validation_result": "accepted",
+      "rejection_reasons": [],
+      "final_decision_action": "MOVE",
+      "final_decision_score": 0.8758,
+      "execution_success": true,
+      "verification_success": true,
+      "world_state_version_before": 5,
+      "world_state_version_after": 6,
+      "timestamp_ns": 1791120726972394100
+    },
+    {
+      "step_number": 5,
+      "question_id": "q_v3_step_5_26972",
+      "question_text": "Which action should be executed to release the object?",
+      "available_options": [
+        "RELEASE",
+        "STOP"
+      ],
+      "laya_provider": "laya",
+      "laya_model": "laya-rl-agent",
+      "selected_option": "RELEASE",
+      "laya_probabilities": {
+        "RELEASE": 0.7549,
+        "STOP": 0.2451
+      },
+      "laya_confidence": 0.1966,
+      "answer_confidence": 0.7549,
+      "laya_latency_ms": 309.2966079711914,
+      "candidate_action": "RELEASE",
+      "deterministic_validation_result": "accepted",
+      "rejection_reasons": [],
+      "final_decision_action": "RELEASE",
+      "final_decision_score": 0.8181,
+      "execution_success": true,
+      "verification_success": true,
+      "world_state_version_before": 6,
+      "world_state_version_after": 7,
+      "timestamp_ns": 1791120727296688900
+    }
+  ]
+}

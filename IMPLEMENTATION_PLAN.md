@@ -1,122 +1,193 @@
 # SĀRTHI — Phased Implementation Plan
 
+**Project Name:** SĀRTHI  
+**Tagline:** An adaptive Physical AI architecture for context-aware, responsibility-driven robotic decision-making under changing physical conditions.  
 **Target Event:** Nebius × NVIDIA Global AI Hackathon 2026  
-**Document Version:** 1.0 (Phase 0 Foundation)  
-**Execution Strategy:** Milestone-Driven, Test-First, Zero-Fake Implementation
+**Document Version:** Version: 3.0  
+**Status:** Draft — V3 Architecture Update  
 
 ---
 
-## Roadmap Overview
+## 1. Safety Architecture & Core Invariant
+
+The following non-negotiable architectural invariant governs all implementation phases across SĀRTHI V3:
+
+> [!IMPORTANT]
+> **Core System Invariant:**  
+> **"AI models propose or select bounded semantic candidates; deterministic software validates physical feasibility; only validated actions reach the robot controller."**  
+> **"Jev must never bypass deterministic safety validation."**
+
+No AI model—including NVIDIA Nemotron and the planned Jev fast decision layer—commands robot motors directly or alters low-level control parameters without passing through the deterministic SĀRTHI Decision Engine.
+
+---
+
+## 2. Validated Baseline & Roadmap Overview
+
+### 2.1 Validated Baseline (Phases A–H Completed)
+SĀRTHI V3 directly builds upon the validated baseline established in Phases A through H:
+- **Test Suite:** 186 unit and integration tests passing ($100\%$, 0 failed, 0 errors).
+- **Physical Environment:** MuJoCo (`mujoco >= 3.1.0`) with 7-DOF Franka Emika Panda arm and parallel gripper.
+- **Cognitive Model:** `nvidia/Nemotron-3-Ultra-550b-a55b` via Nebius Token Factory (`https://api.tokenfactory.nebius.com/v1`).
+- **Physical IK & Control:** Damped-Least-Squares (DLS) differential IK with joint-limit clamping and state extraction.
+- **Physical Disturbance Recovery:** Dynamic obstacle (`PATH_BLOCKED`) injected post-grasp; candidate `MOVE` rejected (clearance $0.066\text{ m} < 0.082\text{ m}$); `REPOSITION` recovery elevated payload to $z \approx 0.35\text{ m}$; final placement error $0.0535\text{ m} \le 0.0600\text{ m}$.
+
+### 2.2 V3 Phased Engineering Roadmap
 
 ```text
-[Phase 0: Foundation] (Current)
-        │
-        ▼
-[Phase 1: Core Backend & Nebius Nemotron Engine]
-        │
-        ▼
-[Phase 2: NVIDIA Isaac Sim Environment & Bridge]
-        │
-        ▼
-[Phase 3: Adaptive Disturbance Detection & Recovery Loop]
-        │
-        ▼
-[Phase 4: Operator Dashboard & Telemetry Console]
-        │
-        ▼
-[Phase 5: Benchmark Sweeps, Hardening & Submission]
+[Phase V3-1: Interface Freezing & Schema Formalization]
+                     │
+                     ▼
+[Phase V3-2: Jev Provider Boundary & Abstract Adapter]
+                     │
+                     ▼
+[Phase V3-3: Decision Context Builder]
+                     │
+                     ▼
+[Phase V3-4: First Real Jev Bounded Decision Query]
+                     │
+                     ▼
+[Phase V3-5: Engine Integration with Safe Candidate Injection]
+                     │
+                     ▼
+[Phase V3-6: Human Command + Physical Situation End-to-End Flow]
+                     │
+                     ▼
+[Phase V3-7: Decision Latency Instrumentation & Benchmarking]
+                     │
+                     ▼
+[Phase V3-8: Physics Validation Framework Implementation]
+                     │
+                     ▼
+[Phase V3-9: Repeated-Run & Reproducibility Validation]
+                     │
+                     ▼
+[Phase V3-10: Failure & Resiliency Fallback Suite]
+                     │
+                     ▼
+[Phase V3-11: Visual Demonstration & Telemetry Logging]
+                     │
+                     ▼
+[Phase V3-12: Final V3 Validation & Submission Readiness]
 ```
 
 ---
 
-## Phase Details
+## 3. Detailed Phase Specifications
 
-### Phase 0: Repository Foundation & Interface Architecture *(Status: COMPLETED)*
-- [x] Establish official repository structure (`backend/app`, `frontend`, `simulation`, `configs`, `scripts`, `tests`, `docs`).
-- [x] Author core architectural and requirement specifications (`ARCHITECTURE.md`, `PRD.md`, `TRD.md`, `APP_FLOW.md`, `UI_UX.md`, `BACKEND_SCHEMA.md`).
-- [x] Define MIT License and production `.gitignore`.
-- [x] Create project evaluation framework (`FEEDBACK.md`).
-
----
-
-### Phase 1: Core Backend & Nebius Token Factory Integration *(Status: PENDING - Next Phase)*
-**Goal:** Build the production asynchronous backend service and connect to Nebius Token Factory for NVIDIA Nemotron inference.
-- **Tasks:**
-  1. Configure Python environment with `pyproject.toml`, FastAPI, Uvicorn, Pydantic v2, and HTTPX.
-  2. Implement `NebiusClient`:
-     - Asynchronous HTTP/2 client for `https://api.tokenfactory.nebius.ai/v1`.
-     - Strict $450\text{ ms}$ timeout handling and fail-safe fallbacks.
-     - Structured JSON schema enforcement with `nvidia/nemotron-4-340b-instruct`.
-  3. Implement `DeterministicSafetyValidator`:
-     - Kinematic joint limit and velocity limit verification.
-     - Cartesian bounding volume enclosure checks.
-  4. Write unit tests for schema validation, safety filtering, and client error handling.
-- **Deliverables:** Verified FastAPI service capable of ingesting disturbance anomalies and generating validated recovery strategies via Nebius.
+### Phase V3-1: Interface Freezing & Schema Formalization
+- **Objective:** Codify and freeze Pydantic models for V3 data contracts (`HumanInstruction`, `PhysicalSituation`, `DecisionContext`, `DecisionQuestion`, `JevDecision`, `CandidateAction`, `Decision`, `PhysicsValidationResult`, `DecisionLatencyRecord`).
+- **Files Likely Affected:** `backend/app/model/`, `backend/app/schemas/`
+- **Tests:** Unit tests verifying schema serialization, roundtrip parsing, and validation constraints.
+- **Acceptance Criteria:** Full Pydantic v2 schemas pass strict typing and serialization tests without breaking existing models.
+- **Dependencies:** None.
+- **Rollback Behavior:** Revert schema files to Phase H baseline commit.
 
 ---
 
-### Phase 2: NVIDIA Isaac Sim Simulation Environment & Bridge *(Status: PENDING)*
-**Goal:** Construct the physical simulation stage, sensor pipeline, and bi-directional communication bridge.
-- **Tasks:**
-  1. Assemble Omniverse USD stage:
-     - Articulated 7-DOF manipulator (Franka Emika Panda).
-     - Parallel-jaw gripper with contact reporting meshes.
-     - Work table, bin, and manipulable test objects.
-  2. Configure synthetic sensor primitives:
-     - 6-axis Force/Torque sensor at wrist flange.
-     - Joint encoder publisher at 100 Hz.
-  3. Develop `DisturbanceInjector`:
-     - Python Omni extension to dynamically trigger slip, force impulses, mass shifts, and dynamic obstacles.
-  4. Build WebSocket bridge client in Python for low-latency streaming between Isaac Sim and SĀRTHI backend.
-- **Deliverables:** Operable Isaac Sim scene publishing real-time telemetry and responding to disturbance injection triggers.
+### Phase V3-2: Jev Provider Boundary & Abstract Adapter
+- **Objective:** Implement the `JevDecisionProvider` abstract base class and a deterministic `MockJevProvider` for offline testing. Prevent any hardcoded vendor coupling.
+- **Files Likely Affected:** `backend/app/providers/jev_provider.py`, `backend/app/providers/mock_jev_provider.py`
+- **Tests:** Unit tests verifying provider contract, exception handling, and mock response generation.
+- **Acceptance Criteria:** Provider interface correctly defined; mock provider returns structured `JevDecision` responses within schema bounds.
+- **Dependencies:** Phase V3-1 schemas.
+- **Rollback Behavior:** Isolate provider module; fallback to baseline mock providers.
 
 ---
 
-### Phase 3: Adaptive Disturbance Detection & Recovery Loop *(Status: PENDING)*
-**Goal:** Close the physical AI loop between detection, Nemotron reasoning, and robotic recovery.
-- **Tasks:**
-  1. Implement `StateBuffer` ring buffer (300 frames) in backend runtime.
-  2. Implement `DisturbanceDetector` with configurable thresholding ($F/T$ delta, slip detection, tracking deviation).
-  3. Implement `RecoveryCoordinator` state machine:
-     - Immediate local freeze hold trigger ($< 5\text{ ms}$).
-     - Asynchronous Nemotron deliberation dispatch via Nebius.
-     - Motion primitive interpolation and command dispatch to Isaac Sim.
-  4. Benchmark closed-loop stability and sensor convergence verification.
-- **Deliverables:** Fully autonomous end-to-end recovery loop executing inside Isaac Sim.
+### Phase V3-3: Decision Context Builder
+- **Objective:** Implement `DecisionContextBuilder` to filter active `WorldState`, target goals, and active constraints into compact, bounded payloads for decision queries.
+- **Files Likely Affected:** `backend/app/orchestration/context_builder.py`
+- **Tests:** Unit tests verifying context extraction from simulated `WorldState` snapshots across nominal, blocked-path, and post-grasp states.
+- **Acceptance Criteria:** Context payload contains only relevant subset of physical variables; zero raw simulation pointers or unstructured memory dumps.
+- **Dependencies:** Phase V3-1 schemas, `SarthiMuJoCoStateReader`.
+- **Rollback Behavior:** Fall back to full `WorldState` passing in `TaskRunner`.
 
 ---
 
-### Phase 4: Operator Dashboard & Telemetry Console *(Status: PENDING)*
-**Goal:** Provide full operator visibility and interactive disturbance demonstration capability.
-- **Tasks:**
-  1. Initialize frontend client in `frontend/`.
-  2. Implement live telemetry visualizer (joint sliders, 6-axis F/T sparklines).
-  3. Integrate live Isaac Sim viewport stream.
-  4. Build NVIDIA Nemotron reasoning log panel (live diagnosis, tokens/sec, inference latency).
-  5. Implement disturbance injection control panel.
-- **Deliverables:** Modern, responsive mission control console connecting to backend WebSockets.
+### Phase V3-4: First Real Jev Bounded Decision Query
+- **Objective:** Connect `JevDecisionProvider` to live or configured external decision service for bounded recovery question evaluation (`REPOSITION`, `REPLAN`, `REGRASP`, `STOP`).
+- **Files Likely Affected:** `backend/app/providers/jev_provider.py`, `configs/.env.example`
+- **Tests:** Contract integration tests testing bounded question queries, timeout enforcement, and response parsing.
+- **Acceptance Criteria:** Provider successfully evaluates bounded question and returns valid `JevDecision` with option probabilities.
+- **Dependencies:** Phase V3-2, Phase V3-3.
+- **Rollback Behavior:** Enable offline mock mode automatically if live endpoint is unreachable.
 
 ---
 
-### Phase 5: Benchmark Sweeps, Hardening & Submission *(Status: PENDING)*
-**Goal:** Stress-test system, collect empirical metrics, and assemble submission assets.
-- **Tasks:**
-  1. Run 50+ automated disturbance trials across varying force magnitudes and slip friction levels.
-  2. Quantify key performance indicators:
-     - Autonomous recovery success rate ($\ge 90\%$).
-     - Average deliberation latency ($\le 350\text{ ms}$).
-     - Safety boundary violation count ($0$).
-  3. Capture high-fidelity screen recordings of Isaac Sim dynamic recovery.
-  4. Finalize submission documentation and README for the Nebius × NVIDIA Global AI Hackathon.
-- **Deliverables:** Production codebase, benchmark report, and demonstration video.
+### Phase V3-5: Engine Integration with Safe Candidate Injection
+- **Objective:** Wire Jev candidate proposals into `SarthiDecisionEngine` as proposed candidate actions, ensuring candidate actions pass through full deterministic constraint validation.
+- **Files Likely Affected:** `backend/app/decision/engine.py`, `backend/app/orchestration/task_runner.py`
+- **Tests:** Unit tests confirming that invalid Jev proposals are strictly rejected by the Decision Engine (e.g. clearance violations).
+- **Acceptance Criteria:** Jev proposal accepted if and only if deterministic constraints are satisfied; 100% rejection of unsafe suggestions.
+- **Dependencies:** Phase V3-4, existing SĀRTHI Decision Engine.
+- **Rollback Behavior:** Revert `TaskRunner` to baseline heuristic candidate generation.
 
 ---
 
-## Risk Matrix & Mitigation Strategies
+### Phase V3-6: Human Command + Physical Situation End-to-End Flow
+- **Objective:** Integrate the complete flow: Natural-language command (Nemotron) $\to$ `WorldState` observation $\to$ `DecisionContext` $\to$ Jev candidate proposal $\to$ deterministic Decision Engine validation $\to$ MuJoCo physical execution.
+- **Files Likely Affected:** `backend/app/orchestration/task_runner.py`, `scripts/mujoco/run_sarthi_mujoco_e2e.py`
+- **Tests:** End-to-end simulation tests replicating pick-and-place with dynamic obstacle avoidance.
+- **Acceptance Criteria:** Robot executes pick-and-place, recovers from `PATH_BLOCKED` via `REPOSITION`, and settles object within $0.0600\text{ m}$ tolerance.
+- **Dependencies:** Phase V3-5.
+- **Rollback Behavior:** Revert orchestration to Phase H `run_sarthi_mujoco_e2e.py` baseline.
 
-| Risk | Impact | Probability | Mitigation Strategy |
-| :--- | :--- | :--- | :--- |
-| **Inference Latency Spikes (> 500ms)** | High | Medium | Strict client timeout ($450\text{ ms}$) with deterministic safe descent fallback. |
-| **LLM Output Kinematic Infeasibility** | Critical | Low | 100% deterministic safety filtering before any motor actuation. |
-| **Isaac Sim Bridge Packet Jitter** | Medium | Medium | Local ring-buffer smoothing and timestamp interpolation in backend. |
-| **Grasp Slip Recovery Stall** | Medium | Low | Dynamic compliance adjustment and multi-stage regrasp primitives. |
+---
+
+### Phase V3-7: Decision Latency Instrumentation & Benchmarking
+- **Objective:** Implement granular timestamp tracking across all decision and execution stages. Record and output structured `DecisionLatencyRecord` telemetry.
+- **Files Likely Affected:** `backend/app/orchestration/telemetry.py`, `records/`
+- **Tests:** Benchmark scripts measuring and aggregating latency across 20+ runs.
+- **Acceptance Criteria:** Telemetry captures exact duration for task understanding, Jev decision, validation, IK, and physics stepping.
+- **Dependencies:** Phase V3-6.
+- **Rollback Behavior:** Disable latency logging wrappers without affecting execution.
+
+---
+
+### Phase V3-8: Physics Validation Framework Implementation
+- **Objective:** Implement the 12-point Physics Validation Framework to evaluate simulation fidelity, numerical stability, and kinematic constraints.
+- **Files Likely Affected:** `simulation/mujoco_runtime/physics_validation.py`, `tests/test_physics_validation.py`
+- **Tests:** Automated test runner executing PV-1 through PV-12 test suites.
+- **Acceptance Criteria:** All 12 validation suites execute and produce structured `PhysicsValidationResult` records against configured thresholds.
+- **Dependencies:** `SarthiMuJoCoArticulation`, `SarthiMuJoCoStateReader`.
+- **Rollback Behavior:** Quarantine physics validation suite as optional diagnostic script.
+
+---
+
+### Phase V3-9: Repeated-Run & Reproducibility Validation
+- **Objective:** Execute 50 automated deterministic replays of the benchmark pick-place-recover scenario to quantify placement repeatability and contact stability.
+- **Files Likely Affected:** `scripts/mujoco/benchmark_repeatability.py`, `records/`
+- **Tests:** Automated batch runner measuring variance in final object coordinates and IK convergence.
+- **Acceptance Criteria:** Placement variance is within configured tolerance across all runs; zero simulation crashes or divergence.
+- **Dependencies:** Phase V3-8.
+- **Rollback Behavior:** None required (read-only benchmarking).
+
+---
+
+### Phase V3-10: Failure & Resiliency Fallback Suite
+- **Objective:** Rigorously test all failure modes: Jev timeout, Nemotron timeout, malformed JSON, invalid target entities, and unrecoverable physical blockages.
+- **Files Likely Affected:** `tests/test_v3_resiliency.py`
+- **Tests:** Chaos and fault-injection test suite simulating dropped packets, slow responses, and boundary violations.
+- **Acceptance Criteria:** System gracefully degrades to deterministic candidate ranking or safe controlled stops; zero unhandled crashes or uncommanded actuations.
+- **Dependencies:** Phase V3-6, Phase V3-7.
+- **Rollback Behavior:** None (test-only suite).
+
+---
+
+### Phase V3-11: Visual Demonstration & Telemetry Logging
+- **Objective:** Update interactive 3D viewer runner and telemetry recording to visually and analytically demonstrate the V3 pipeline (human command $\to$ situation $\to$ fast decision $\to$ robot action).
+- **Files Likely Affected:** `scripts/mujoco/run_sarthi_mujoco_e2e.py`
+- **Tests:** Manual viewer run and automated headless record generation.
+- **Acceptance Criteria:** Live 3D viewer displays robot motion, obstacle disturbance, and recovery path while streaming decision telemetry.
+- **Dependencies:** Phase V3-6.
+- **Rollback Behavior:** Maintain existing `--headless` and `--viewer` flags from Phase H.
+
+---
+
+### Phase V3-12: Final V3 Validation & Submission Readiness
+- **Objective:** Final repository audit, end-to-end regression validation (all unit tests + V3 suites), documentation alignment, and artifact archiving.
+- **Files Likely Affected:** `README.md`, `FEEDBACK.md`, `records/`
+- **Tests:** Full test suite execution across all test files.
+- **Acceptance Criteria:** 100% tests passing; complete telemetry records generated; documentation fully aligned with implemented code.
+- **Dependencies:** Phases V3-1 through V3-11.
+- **Rollback Behavior:** Full checkpoint rollback to previous stable commit.
